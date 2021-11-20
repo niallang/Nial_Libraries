@@ -1,2 +1,5 @@
 # Nial_Libraries
-Pieces of code written in Nial
+
+This repository contains common Nial code submitted by a number of developers.
+
+
