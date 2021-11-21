@@ -1,0 +1,46 @@
+loaddefs "ntk;
+
+write '*** Opening Tk';
+tk_open 'Feet to Meters';
+
+write '*** Creating widgets';
+ttk_frame '.c' ("padding '3 3 12 12');
+tk_grid '.c'  ("column 0) ("row 0) ("sticky "nwes) ("padx 5) ("pady 5);
+
+tk_grid "columnconfigure '.' 0 ("weight 1);
+tk_grid "rowconfigure '.' 0 ("weight 1);
+
+ttk_entry '.c.feet' ("width 7) ("textvariable 'feet');
+tk_grid '.c.feet' ("column 2) ("row 1) ("sticky 'we') ("padx 5) ("pady 5);
+
+ttk_label '.c.meters' ("textvariable "meters);
+tk_grid  '.c.meters' ("column 2) ("row 2) ("sticky "we) ("padx 5) ("pady 5);
+
+ttk_button '.c.calc' ("text "Calculate) ("command 'nialEvent calculate $::feet');
+tk_grid  '.c.calc' ("column 3) ("row 3) ("sticky "w) ("padx 5) ("pady 5);
+
+
+ttk_label '.c.flbl' ("text 'Feet');
+tk_grid '.c.flbl' ("column 3) ("row 1) ("sticky "w) ("padx 5) ("pady 5);
+
+ttk_label '.c.islbl' ("text 'Is equivalent to:');
+tk_grid '.c.islbl' ("column 1) ("row 2) ("sticky "e) ("padx 5) ("pady 5);
+
+ttk_label '.c.mlbl' ("text 'Meters');
+tk_grid '.c.mlbl' ("column 3) ("row 2) ("sticky "w) ("padx 5) ("pady 5);
+
+tk_bind '.' ['<Return>'] 'nialEvent calculate $::feet';
+
+
+calculate is op args {
+  feet := tonumber first args;
+  '::meters' tk_set (feet*0.3048);
+}
+
+
+write '*** Processing messages on back channel';
+tcl_ProcessBackChannel 12000;
+
+write '*** bye for now';
+bye;
+

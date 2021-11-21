@@ -1,0 +1,42 @@
+# mandatory scribble example for hand drawing on a screen
+
+
+loaddefs "ntk;
+
+write '*** Opening Tk';
+tk_open 'Drawing Example';
+
+write '*** Creating widgets';
+
+tk_canvas '.canvas';
+tk_grid '.canvas' ("sticky "nwes) ("column 0) ("row 0);
+
+tk_grid "columnconfigure '.' 0 ("weight 1);
+tk_grid "rowconfigure '.' 0 ("weight 1);
+
+tk_bind '.canvas' ['<1>'] 'nialEvent setCoords %x %y';
+tk_bind '.canvas' ['<B1-Motion>'] 'nialEvent addLine %x %y';
+
+lastx := 0;
+lasty := 0;
+
+setCoords is op x y {
+  nonlocal lastx lasty;
+  lastx := tonumber x;
+  lasty := tonumber y;
+}
+
+addLine is op x y {
+  nonlocal lastx lasty;
+  '.canvas' tk_draw "create "line lastx lasty x y;
+  lastx := tonumber x;
+  lasty := tonumber y;
+  }
+
+
+write '*** Processing messages on back channel';
+tcl_ProcessBackChannel 12000;
+
+write '*** bye for now';
+bye;
+

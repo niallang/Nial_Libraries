@@ -1,0 +1,491 @@
+# Preliminary playing with Tcl/Tk as Nial window toolkit
+
+
+
+# Create a single instance of the variable VName
+# and initialise it with the value NVal
+
+defOnceAs IS OPERATION VName NVal {
+    triggerval := settrigger o;
+    IF (value VName) = (fault '?invalid name') THEN
+         VName assign NVal;
+    ENDIF;
+    settrigger triggerval;
+}
+
+
+# Simple string test, should be in a library file
+
+_beginsWith is op S Prefix (Prefix = ((tally Prefix) take S)); 
+  
+
+# Create the default pipe for wish commands and some other basic
+# values
+
+"_tkWish defOnceAs -1;
+_CRLF := link (char 13) char (10);
+
+
+# Single function to write to wish
+
+_tkWriteToWish is op S {
+  nonlocal _tkWish;
+  %write '_tkWriteToWish' S;
+  if _tkWish = -1 then
+    write S;
+  else
+    writefile _tkWish S l;
+  endif;
+  }   
+
+
+
+_tclJoin is op SL {
+  if 0 = tally SL then
+    ''
+  else
+    reduce (op F N (link F ' ' N)) SL
+  endif
+  }
+
+
+# Strip carriage return linefeed from the end of a string
+
+_stripCRLF is op S {
+  if (2 >= tally S) and (_CRLF = (-2 take S)) then
+    -2 drop S
+  else
+    S
+  endif
+  }
+
+
+# Convert the argument into a suitable string for Tcl
+
+_tclString is op A {
+  if isstring A then
+    link '{' A '}'
+  elseif atomic A then
+    string A
+  else
+    ?invalid_arg
+  endif}
+
+
+# Format a list as a Tk option in form
+#    -name value
+
+_tkOption is op SL {
+  Name Val := SL;
+  link '-' (string Name) ' ' (_tclString Val)
+  }
+
+
+# Format a Tk argument
+
+_tkArgument is op A {
+  if (isstring A) or (atomic A) then
+    _tclString A
+  else
+    _tkOption A
+  endif
+  } 
+  
+
+# Format a Tcl/Tk command
+
+_tkCommand is op Name Params {
+  if isstring Params then
+    link Name ' ' Params
+  else
+    link Name ' ' (_tclJoin each _tkArgument Params)
+  endif
+  }
+
+
+
+
+
+# ---------- Socket connector for Nial to Tcl ------
+#
+# Messages can be received from the Wish process across
+# a socket that is established when the wish
+# process is created.
+#
+# The messages have a simple form consisting of a two character
+# prefix followed by string.
+#
+#  c:command to execute
+#  i:information to note
+#  r:response frpom a previous message
+#  e:asynchronous event
+
+
+"_tclAcceptSock  defOnceAs -1;
+"_tclAcceptPort  defOnceAs -1;
+"_tclBackChannel defOnceAs -1;
+
+
+# Open a listener socket to accept connections from
+# child Tcl processes
+
+_tclConnector is op hostname {
+  nonlocal _tclAcceptSock _tclAcceptPort;
+  _tclAcceptSock _tclAcceptPort := socket_bind hostname 0;
+  % Initiate accepting connections on the socket;
+  socket_listen _tclAcceptSock 5;
+  }
+
+
+# Accept a connection from a child process
+
+_tclAcceptConnection is op sock {
+  nonlocal _tclBackChannel;
+  _tclBackChannel := socket_accept sock;
+  socket_nodelay _tclBackChannel l;
+  }
+
+
+# Receive a message from a child
+
+"_tclRecvBuffer defOnceAs '';
+
+
+# Utility routine to receive a number of bytes
+
+_tclRecvBytes is op cnt {
+  nonlocal _tclBackChannel _tclRecvBuffer;
+  while (cnt > tally _tclRecvBuffer) and (_tclBackChannel ~= -1) do
+    data := socket_receive _tclBackChannel 12000 o;
+    if isfault data then
+      _tclBackChannel := -1;
+    else
+      _tclRecvBuffer := _tclRecvBuffer link data;
+    endif;
+  endwhile;
+  if _tclBackChannel ~= -1 then
+    data := cnt take _tclRecvBuffer;
+    _tclRecvBuffer := cnt drop _tclRecvBuffer;
+  else
+    data := '';
+  endif;
+  data
+  }
+
+
+# Receive a message over the back channel from wish
+  
+_tclRecvMessage is op cnt {
+  nonlocal _tclBackChannel _tclRecvBuffer;
+  % First get the message length;
+  data := _tclRecvBytes 4;
+  if not empty data then
+     % Then decode and add 1 for the : separator;
+     cnt := 1 + toNumber data;
+     data := _tclRecvBytes cnt;
+     % Drop the :;
+     1 drop data
+   else
+    ''
+   endif
+  }
+
+
+# Send a message to a child. The message is a char array
+# that will be padded with a CRLF sequence if needed.
+#
+# TODO
+
+_tclSendMessage is op Data {
+  nonlocal _tclBackChannel;
+  % Pad the data if necessary;
+  if (2 > tally Data) or (_CRLF ~= (-1 take Data)) then
+    Data := Data link _CRLF;
+  endif;
+  socket_send _tclBackChannel data o
+  }
+
+
+
+# ------------ Back Channel Processing ----------------
+
+
+"_tclLooping defOnceAs l;
+
+
+_tclDecodeMessage is op msg {
+  res := [];
+  % Split out the header of the form '<char>:';
+  hdr := first msg;
+  msg := 2 drop msg;
+  % Build up the body;
+  while 0 < tally msg do
+    i := `: find msg;
+    if i = tally msg then
+      % Does not start with a valid count field;
+      write '*** Invalid tcl message received';
+      res := [];
+      hdr := `!;
+      msg := '';
+    else 
+      cnt := tonumber (i take msg);
+      msg := (i + 1) drop msg;
+      fld := cnt take msg;
+      msg := (1+cnt) drop msg;
+      res := fld hitch res;
+    endif; 
+  endwhile;
+  [hdr, reverse res]
+}
+
+
+_tclHandleCommand is op Cmd {
+  write ('*** Unhandled command: ' link _tclJoin Cmd);
+}
+
+_tclHandleInformation is op Cmd {
+  write ('*** Tcl Information: ' link _tclJoin Cmd);
+}
+
+_tclHandleResponse is op Cmd {
+  write ('*** Tcl Response: ' link _tclJoin  Cmd);
+}
+
+_tclHandleEvent is op Cmd {
+  fun := phrase first Cmd;
+  fun apply rest Cmd;
+}
+
+
+_tclProcessMessage is op msg {
+  hdr body := _tclDecodeMessage msg;
+  case hdr from
+    `c: _tclHandleCommand body end
+    `i: _tclhandleInformation body end
+    `r: _tclHandleResponse body end
+    `e: _tclHandleEvent body; end
+    `!: write '*** Invalid message ignored' msg end
+  endcase;
+  }
+
+
+# Loop processing messages until either the back channel is closed or
+# some action changes the value of _tclLooping
+
+tcl_ProcessBackChannel is op Cnt {
+  nonlocal _tclBackChannel _tclLooping;
+  % The processing loop;
+  _tclLooping := l;
+  while _tclLooping and (_tclBackChannel ~= -1) do
+    msg := _tclRecvMessage Cnt;
+    _tclProcessMessage msg;
+  endwhile;
+  }
+  
+
+# Loop waiting for a response on the back channel
+
+_tclProcessResponse is op Cnt {
+  hdr := `?;
+  res := '';
+  while hdr ~= `r do
+    msg := _tclRecvMessage Cnt;
+    hdr body := _tclDecodeMessage msg;
+    if hdr = `r then
+      res := body;
+    else
+      _tclProcessMessage msg;
+    endif;
+  endwhile;
+  res
+}
+
+
+# Write a command to wish and wait for the response
+# The response is returned to the caller.
+
+_tkWriteCmdToWish is op S {
+  nonlocal _tkWish;
+  %write '_tkWriteToWish' S;
+  Cmd := link 'nialResponse [' S ']';
+  _tkWriteToWish Cmd;
+  _tclProcessResponse 12000
+  }   
+
+# --------------- Tcl/Tk Command Processing -------------
+
+
+# Write a Tk command either to a pipe opened to Wish
+# or to the terminal
+
+_tkw is op Name Params {
+  res := _tkWriteCmdToWish _tkCommand Name Params;
+  if not empty res then
+    res := first res;
+  endif;
+  res
+  }
+
+
+# Write a Tk grid command either to a pipe opened to Wish
+# or to the terminal
+
+tk_grid is op cmd {
+  % handle the different options for the grid command;
+  if (isstring cmd) or (isphrase cmd) then
+    % Simplest form, grid widgetname;
+    tkCmd := 'grid ' link string cmd;
+  else
+    if (first cmd) _beginsWith '.' then
+      % Form, grid widgetname options;
+      tkCmd := link 'grid ' (string first cmd) ' ' (_tclJoin each _tkArgument rest cmd);
+    else
+      % Form: grid configure... ;
+      tkCmd := link 'grid ' (string first cmd) ' ' (_tclJoin each _tkArgument rest cmd);
+    endif;
+  endif;
+  _tkWriteCmdToWish tkCmd
+  }
+
+
+# ------------ Register Operations ------------------
+#
+# The output of a Tcl/Tk command can be registered
+# in a global hashtable
+
+_tkRegistrations := _tcreate 1;
+_tkId := 0;
+
+
+tk_register is op tcmd { "done }
+
+
+
+# ------------ Basic Initialisation Commands --------
+
+nialConnectorSource := 'nialConnector.tcl';
+
+# Open a Tk Window
+
+tk_Open is op Title {
+  nonlocal _tkWish _tclAcceptSock _tclAcceptPort _tclBackChannel;
+  % Create a wish process for windowing if one does not exist;
+  if _tkWish = -1 then
+    %_tkWish := open (link 'wish -name "' title '"') "pwt;
+    _tkWish := open 'tclsh' "pwt;
+    _tkWriteToWish 'package require Tk';
+    _tkWriteToWish (link 'wm title . "' title '"');
+    % Make sure we have a back channel acceptor;
+    if _tclAcceptSock = -1 then
+      _tclConnector '0.0.0.0';
+    endif;
+    % Add the back channel code to the wish process;
+    _tkWriteToWish (link 'source {' nialConnectorSource '}');
+    _tkWriteToWish ('connectNial 123 localhost ' link string _tclAcceptPort);
+    % Accept the connection from the child;
+    _tclAcceptConnection _tclAcceptSock;
+    % Validate connection by receiving the information message;
+    _tclProcessMessage _tclRecvMessage 2048;
+  endif;
+  }
+
+
+# Close a Tk window
+
+_tkClose is op Msg {
+  nonlocal _tkWish;
+  if _tkWish ~= -1 then
+    _tkWriteToWish 'exit 0';
+    close _tkWish;
+    _tkWish := -1;
+  endif;
+  "done
+  }
+
+
+_tkEnd is op Msg {
+  _tkClose Msg;
+  bye;
+  }
+
+
+# Set a variable in the Wish process
+
+tk_Set is op Name Val {
+  _tkWriteToWish (link 'set ' (string name) ' ' (string val));
+  }
+
+
+# Bind a windowing event to a script
+
+tk_bind is op Tag Sequence Script {
+  % Allow Sequence to be a string or list;
+  SSeq := Sequence;
+  if not isstring SSeq then
+    SSeq := _tclJoin SSeq;
+  endif;
+  tkCmd := link 'bind ' (string tag) ' {' SSeq '} {' (string Script) '}'; 
+  _tkWriteToWish tkCmd;
+  }
+  
+
+# Load a file of Tcl commands into the wish process
+
+tk_source is op Script {
+  tkCmd := link 'source ' (string Script); 
+  _tkWriteToWish tkCmd;  
+}
+
+
+# ------------- Toplevel operations ----------------------
+
+# Destroy multiple top level windows
+
+tk_destroy is op Wins {
+  if isstring Wins then
+    _tkWriteToWish (link 'destroy ' Wins);
+  else
+    _tkWriteToWish (link 'destroy ' (_tclJoin Wins));
+  endif;
+  }
+
+
+# Window manager operations
+
+tk_wm is op args {
+  _tkWriteToWish ('wm ' link _tclJoin args);
+  }
+
+
+# ----------------- Canvas Operations --------------------------
+
+
+tk_draw is op Canvas Figure {
+  tkCmd := link (string Canvas) ' ' (_tclJoin each _tkArgument Figure);
+  res := _tkWriteCmdToWish tkCmd;
+  if not empty res then
+    res := first res;
+  endif;
+  res
+}
+
+
+# ----------------- Widget Definitions ---------------------------
+# Create some aliases for the templated Tk widgets to simplify
+# programming. These are themed widgets and make better
+# looking interfaces.
+
+ttk_label  is  ('ttk::label' _tkw);
+ttk_button is  ('ttk::button' _tkw);
+ttk_frame  is  ('ttk::frame' _tkw);
+ttk_entry  is  ('ttk::entry' _tkw);
+
+
+# Aliases for the basic tk widgets
+
+tk_toplevel  is ('tk::toplevel' _tkw);
+tk_button    is ('tk::button' _tkw);
+tk_label     is ('tk::label' _tkw);
+tk_canvas    is ('tk::canvas' _tkw);
+
+
