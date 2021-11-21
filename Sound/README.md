@@ -4,8 +4,8 @@
 This work was contributed by Stuart Smith. It is a conversion from a MATLAB
 toolkit.
 
-Full documentation of the routines in *sound_new.ndf* is contained in the file
-**NialSound.pdf**.
+Full documentation of the routines is contained in the file
+**NialSound.md**.
 
 
 These demos illustrate the use of routines contained in *sound_new.ndf*,
