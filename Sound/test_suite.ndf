@@ -1,0 +1,148 @@
+loaddefs "sound_new;
+loaddefs "gplot;
+
+n := 32 ;
+
+# Set the default sample rate and duration
+
+sr := 44100 ;
+dur := 0.25 ;
+
+write ' ' ;
+write 'Testing units not otherwise tested in "Demo" programs.' ;
+write ' ' ;
+
+write 'WINDOWS' ;
+
+x := triangle n ;
+gplot_y x ;
+sleep 1 ;
+
+x := hamming n ;
+gplot_y x ;
+sleep 1 ;
+
+x := tukey n 0.1 ;
+gplot_y x ;
+sleep 1 ;
+
+
+write 'OSCILLATORS AND ENVELOPE GENERATORS' ;
+
+x := cosine 440 dur sr ;
+x := a_r x 0.1 0.1 sr ;
+play x sr ;
+sleep 1 ;
+
+x := tri 440 dur sr ;
+x := expa_r x 0.1 0.1 8 8 sr ;
+play x sr ;
+sleep 1 ;
+
+t := ( sine 1 1 512 ) link 0.0 ;
+c := hann floor ( dur * sr ) ;
+x := vca x c ;
+play x sr ;
+sleep 1 ;
+
+t := ( hann 512 ) link 0.0 ;
+w := ( sine 1 1 512 ) link 0.0 ;
+c := one_shot dur t 0.0 1.0 sr ;
+x := vco w 440 c 0.5 0 sr ;
+play x sr ;
+sleep 1 ;
+
+
+write 'TREMOLO AND VIBRATO' ;
+
+nch n sr x := wavread makefilepath ('wav' 'claire_oubli_flute.wav') ;
+
+y := tremolo x 3 0.3 sr ;
+play y sr ;
+sleep 1 ;
+
+y := vibrato3 x 3 0.1 sr ;
+play y sr ;
+sleep 1 ;
+
+
+write 'DELAY LINES' ;
+
+nch n sr x := wavread makefilepath ('wav' 'GUITAR.wav') ;
+
+y := allpdelay x 0.1 0.5 sr ;
+play y sr ;
+sleep 1 ;
+
+y := firdelay x 0.1 0.5 sr ;
+play y sr ;
+sleep 1 ;
+
+y := iirdelay x 0.1 0.5 sr ;
+play y sr ;
+sleep 1 ;
+
+
+write 'DECIMATION AND LINEAR INTERPOLATION' ;
+
+nch n sr x := wavread makefilepath 'wav' 'claire_oubli_voix.wav';
+
+y := deci x 1.5 ;
+play y sr ;
+sleep 1 ;
+
+y := lint x 0.5 ;
+play y sr ;
+sleep 1 ;
+
+
+write 'ENVELOPE FOLLOWER' ;
+
+z := rms y sr ;
+ploty z ;
+sleep 1 ;
+
+
+write 'TREBLE AND BASS CONTROLS' ;
+
+nch n sr x := wavread makefilepath ('wav' 'moore_guitar.wav') ;
+
+y := highshelving x 800.0 18.0 sr ;
+play y sr ;
+sleep 1 ;
+
+y := lowshelving x 100.0 18.0 sr ;
+play y sr ;
+
+
+write 'LIMITING AND COMPRESSION' ;
+
+y := compress x -6.0 0.5 0.1 0.5 1.0 sr ;
+play y sr ;
+sleep 1 ;
+
+y := limiter x -6.0 0.5 1.0 sr ;
+play y sr ;
+
+write 'RESONANT FILTER' ;
+
+x := unit 44100 ;
+y := flt x 440 2 44100 ;
+play y sr ;
+sleep 1 ;
+
+
+write 'CROSSFADE' ;
+
+nch n sr x := wavread makefilepath ('wav' 'GUITAR.wav') ;
+y := crossfade x ( reverse x ) 4.0 sr ;
+play y sr ;
+sleep 1 ;
+
+
+
+
+
+
+
+

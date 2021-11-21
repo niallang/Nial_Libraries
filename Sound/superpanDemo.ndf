@@ -1,0 +1,25 @@
+loaddefs "sound_new
+
+loaddefs "superpan
+
+nch n sr x := wavread makefilepath 'wav' 'Toms_diner.wav' ;
+
+nch n sr ir := wavread makefilepath 'wav' '30by30ftroom.wav' ;
+
+dur := tally x / sr ;
+
+write 'sound moving left to right from background to foreground' ;
+
+xi := FadeIn x dur sr ;
+
+left right := superpan xi ir "sin -30 30 50 0 sr ;
+
+play ( left right ) sr ;
+
+write 'sound moving right to left from foreground to background' ;
+
+xo := FadeOut x dur sr ;
+
+left right := superpan xo ir "sin 30 -30 0 50 sr ;
+
+play ( left right ) sr ;

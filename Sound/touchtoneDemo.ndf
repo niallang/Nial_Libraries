@@ -1,0 +1,32 @@
+write 'A Touch Tone phone dialer. This function will dial a number on some' ;
+write 'TouchTone telephones if the handset is held near a speaker.' ;
+write 'Enter' ;
+write ' ' ;
+write '   DTMF keys' ;
+write ' ';
+write 'where keys = a numeric vector containing the complete desired phone number' ;
+
+
+loaddefs "sound_new.ndf
+
+DTMF is op keys {
+  sr := 22050 ;
+  FOR i WITH tell tally keys DO
+    key := keys@i ;
+    CASE key FROM
+        1: tone := ( sine 697 0.3 sr ) + ( sine 1209 0.3 sr ) / 2 ; END
+        2: tone := ( sine 697 0.3 sr ) + ( sine 1336 0.3 sr ) / 2 ; END
+        3: tone := ( sine 697 0.3 sr ) + ( sine 1477 0.3 sr ) / 2 ; END
+        4: tone := ( sine 770 0.3 sr ) + ( sine 1209 0.3 sr ) / 2 ; END
+        5: tone := ( sine 770 0.3 sr ) + ( sine 1336 0.3 sr ) / 2 ; END
+        6: tone := ( sine 770 0.3 sr ) + ( sine 1477 0.3 sr ) / 2 ; END
+        7: tone := ( sine 852 0.3 sr ) + ( sine 1209 0.3 sr ) / 2 ; END
+        8: tone := ( sine 852 0.3 sr ) + ( sine 1336 0.3 sr ) / 2 ; END
+        9: tone := ( sine 852 0.3 sr ) + ( sine 1477 0.3 sr ) / 2 ; END
+        0: tone := ( sine 941 0.3 sr ) + ( sine 1336 0.3 sr ) / 2 ; END
+    ELSE
+        write 'bad key' ;
+    ENDCASE ;
+    play ( a_r tone 0.03 0.03 sr ) sr ;
+  ENDFOR ;
+}

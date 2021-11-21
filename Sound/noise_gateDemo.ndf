@@ -1,0 +1,11 @@
+loaddefs "sound_new
+
+write 'Original drum sound' ;
+mch n sr x := wavread makefilepath 'wav' 'drums.wav' ;
+dur := tally x / sr ;
+play x sr ;
+
+write 'Drums with noise gate applied. Note which elements of the sound' ;
+write 'are suppressed.' ;
+y := noisegate x 0.02 0.03 0.005 0.05 0.005 sr ;
+play y sr ;

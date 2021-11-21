@@ -1,0 +1,15 @@
+loaddefs "sound_new
+
+n := 32 ;
+sr := 44100 ;
+
+freq := 400 * ( 1 + ( pinknoise 1 n ) * 0.5 ) + 110 ;
+freq := each midi2freq each freq2midi freq ;
+dur := 0.5 * ( 1 + ( pinknoise 1 n ) * 0.5 ) + 0.1 ;
+y := null ;
+FOR i WITH tell n DO
+   x:=a_r ( sine freq@i dur@i 22050 ) 0.1 0.1 sr ;
+   y := y link x ;
+ENDFOR ;
+y := artrvb y 0.1 50.0 0.5 8 sr ;
+play y sr ;

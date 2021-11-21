@@ -1,0 +1,27 @@
+# Filter sweep demo
+
+loaddefs "sound_new
+
+sr := 44100 ;
+
+write 'resonant filter sweep demonstration' ;
+write ' ' ;
+
+write 'unprocessed white noise' ;
+x := noise 3 sr ;
+play x sr ;
+
+write 'resonant filter sweep over white noise, 1kHz to 50 hz and back' ;
+v := expdecay 3 8 sr ;
+z := normalize( a_r ( vcf x v 50 1000 8 sr ) 0.1 0.1 sr ) ;
+play ( z link reverse z ) sr ;
+
+write 'unprocessed 100 Hz pulse train' ;
+x := spike 100 3 sr ;
+play x sr ;
+
+write 'resonant filter picks out individual harmonics in pulse train' ;
+v := linspace 0 1 ( tally x ) ;
+z := normalize( vcf x v 50 1000 5 sr ) ;
+play z sr ;
+  

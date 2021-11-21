@@ -1,0 +1,29 @@
+loaddefs "sound_new
+
+sr := 44100 ;
+
+write 'sinc filter demo' ;
+
+write 'unfiltered white noise' ;
+x := noise 1 sr ;
+play x sr ;
+
+write 'lowpass filter, 100 Hz cutoff' ;
+y := sinc_lowpass x 100.0 50.0 sr ;
+y := a_r y 0.1 0.1 sr ;
+play y sr ;
+
+write 'bandpass filter, 1kHz center frequency' ;
+y := sinc_bandpass x 5000.0 10000.0 100.0 sr ;
+y:=a_r y 0.1 0.1 sr ;
+play y sr ;
+
+write 'highpass filter, 3000 Hz cutoff' ;
+y := sinc_highpass x 3000.0 100.0 sr ;
+y := a_r y 0.1 0.1 sr ;
+play y sr ;
+
+write 'bandstop filter, 1000 Hz center frequency' ;
+y := sinc_bandstop x 5000.0 10000.0 100.0 sr ;
+y := a_r y 0.1 0.1 sr ;
+play y sr ;

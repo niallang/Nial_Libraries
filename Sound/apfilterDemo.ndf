@@ -1,0 +1,25 @@
+loaddefs "sound_new
+
+sr := 44100 ;
+
+write 'allpass filter demo' ;
+
+write 'unfiltered white noise' ;
+x := noise 2 sr ;
+play x sr ;
+
+write 'lowpass filter, 100 Hz cutoff' ;
+y := aplowpass x 100.0 sr ;
+play y sr ;
+
+write 'bandpass filter, 1kHz center frequency, 10 Hz bandwidth' ;
+y := apbandpass x 1000.0 5.0 sr ;
+play y sr ;
+
+write 'highpass filter, 3000 Hz cutoff' ;
+y := aphighpass x 3000.0 sr ;
+play y sr ;
+
+write 'bandstop filter, 1000 Hz center frequency, 500 Hz bandwidth' ;
+y := apbandstop x 1000.0 250.0 sr ;
+play y sr ;

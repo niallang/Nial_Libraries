@@ -1,0 +1,55 @@
+# SPATIAL FX DEMOS
+
+loaddefs "sound_new
+
+write 'music panned back and forth across the stereo image' ;
+nch n sr sam := wavread makefilepath 'wav' 'moore_guitar.wav' ;
+y := autopan sam 1 90 0.7 sr ;
+play y sr ;
+sleep 2;
+
+
+write 'tone placed at various positions in the stereo image' ;
+x := a_r ( sine 440 2 sr ) 0.2 0.2 sr ;
+write 'left -30 degrees' ;
+y := stereopan x -30 ;
+play y sr ;
+
+write 'left -15 degrees' ;
+y := stereopan x -15 ;
+play y sr ;
+
+write 'center' ;
+y := stereopan x 0 ;
+play y sr ;
+
+write 'right 15 degrees' ;
+y := stereopan x 15 ;
+play y sr ;
+
+write 'right 30 degrees' ;
+y := stereopan x 30 ;
+play y sr ;
+
+write ' ' ;
+write   'Use interaural time delay to move sound away from the left channel.' ;
+
+write 'center' ;
+play_stereo sam sam sr ;
+
+ch := "L ;
+write 'Begin to move music to right.' ;
+y := delaypan sam ch 0.005 sr ;
+play y sr ;
+
+write 'Further right' ;
+y := delaypan sam ch 0.01 sr ;
+play y sr ;
+
+write 'Further still' ; 
+y := delaypan sam ch 0.025 sr ;
+play y sr ;
+
+write 'Final position' ;
+y := delaypan sam ch 0.05 sr ;
+play y sr ;

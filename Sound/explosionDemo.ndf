@@ -1,0 +1,29 @@
+# Makes an explosion sound. Varying the frequency and duration of the
+# sound allows the function to simulate different kinds of explosions.
+#
+# Inputs:
+#   fhi = nominal highest frequency in explosion in Hz
+#   dur = duration of the explosion in seconds
+#   sr  = sample rate in samples per second
+#
+# Examples:
+#   explosion 60 3 44100     = distant large explosion
+#   explosion 1500 0.3 44100 = nearby pistol shots
+
+loaddefs 'sound_new'
+
+explosion IS OP fhi dur sr {
+    x := noise dur sr ;
+    z := aplowpass x fhi sr ;
+    d := expdecay dur 8 sr ;
+    z := tally d take z ;
+    normalize ( z * d )
+ }
+
+
+ write 'distant large explosion' ;
+ x := explosion 60 3 44100 ;
+ play x 44100 ;
+ write 'nearby pistol shots' ;
+ x := explosion 1500 0.3 44100 ;
+ play ( x link x link x link x ) 44100 ;

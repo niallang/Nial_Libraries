@@ -1,0 +1,18 @@
+loaddefs "sound_new
+
+nch n sr x := wavread makefilepath 'wav' 'voix.wav' ;
+
+write 'Demonstration of time-stretching without affecting pitch'
+
+write 'Play the unmodified voice clip' ;
+play x sr ;
+
+
+write 'Play clip at 1.5x normal duration' ;
+z := time_stretch x 1.5 ;
+play z sr ;
+sleep 1 ;
+
+write 'Play clip at 0.5x normal duration' ;
+z := time_stretch x 0.5 ;
+play z sr ;

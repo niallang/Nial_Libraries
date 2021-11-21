@@ -1,0 +1,39 @@
+loaddefs "sound_new
+
+# Demonstration of various effects that can be obtained with the VCO op
+
+laser IS OP fhi dur sr {
+   n := ceiling( dur * sr ) ;   
+   ctrl := linspace 1 0 n ;
+   wave := ( sawtooth 1 1 512 ) link 0.0 ;
+   sig := ( vco wave fhi ctrl 1 0 sr ) link ( 3 * sr reshape 0.0 ) ;
+   unidelay sig 1 0.7 0 0.09 sr
+}
+
+sr := 44100 ;
+
+write 'high "laser"' ;
+play ( laser 2000 0.3 sr ) sr ;
+
+write 'low "laser"' ;
+play ( laser 750 0.4 sr ) sr ;
+
+tone := ( sine 1 1 512 ) link 0.0 ;
+
+write 'intrusion alarm' ;
+ctrl := 1 + ( sawtooth 2 4 sr ) / 2 ;
+sig := VCO tone 440 ctrl 0.25 0 sr ;
+play sig sr ;
+sleep 1 ;
+
+write 'European-style police siren' ;
+ctrl := 1 + ( square 1 4 sr ) / 2 ;
+sig := VCO tone 440 ctrl 0.4 0 sr ;
+play sig sr ;
+sleep 1 ;
+
+write 'American Emergency Alert System (EAS) TV tone' ;
+ctrl := sine 75 3 sr ;
+sig := VCO tone 1500 ctrl 0.25 0 sr ;
+play sig sr ;
+

@@ -1,0 +1,61 @@
+loaddefs "sound_new
+
+sr := 44100 ;
+ch ns gsr a := wavread makefilepath 'wav' 'GUITAR.wav' ;
+a := resample a sr gsr ;
+a := FadeOut a 0.1 sr ;
+
+write 'Here is the dry audio file before unidelay is applied' ;
+play_mono a sr ;
+
+b := unidelay a 0.5 0 1 0.05 sr ;
+write 'Here is the same file with pre-delay' ;
+play_mono b sr ; 
+
+# What I've done here is added a single delay .05 seconds after
+# the original sound, but I've also made the orginal sound half
+# as loud as the delayed version so that the original sound acts
+# as a grace note to the delayed version of the sound.
+# This same effect could be achieved with the firdelay function
+
+write 'Again with echo' ;
+c := unidelay a 1 0.175 0 0.4 sr ;
+play_mono c sr ;
+
+# For the echo effect, all I've done is add a repeating delay starting
+# at .4 seconds after the original sound with a gain value of .175 
+# (out of a maximum of 1).  This same effect can be achieved with 
+# iirdelay
+
+write 'Again with "retro spring reverb"' ;
+d := unidelay a 1 0.7 0 0.09 sr ;
+play_mono d sr ;
+
+# For this spring reverb effect, I've given the repeating delay a high
+# gain so that it starts nearly as loud as the original signal, and
+# decays from there.  Delay time (dur) is very fast at 90milliseconds,
+# causing each echo to be very close together.  This same effect can be
+# achieved with iirdelay.
+
+write 'Again with "comb filtered resonator 1"' ;
+e := unidelay a 1 0.92 0 0.001 sr ;
+play_mono e sr ;
+
+# For this effect, I've chosen an extremely quick delay time (dur),
+# and a high gain for the repeating delay (iirdelay).  This causes 
+# multiple instances of the sound to be played less than a millisecond
+# apart from each other, causing comb filtering. 
+
+write 'Again with "comb filtered resonator 2"' ;
+f := unidelay a 1 0.95 0 0.01 sr ;
+play_mono f sr ;
+
+# Same strategy as above, but this effect sounds more alien/robotic...
+# Far out!
+
+write 'Again with "liquid echoes"' ;
+h:= unidelay a 1 0.5 0.3 0.4 sr ;
+play_mono h sr ;
+
+# Here I've combined the firdelay and iirdelay to create a 'sea of
+# echoes!'

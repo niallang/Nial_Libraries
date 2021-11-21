@@ -1,0 +1,24 @@
+loaddefs "sound_new
+
+nch n sr sam := wavread makefilepath 'wav' 'GUITAR.wav' ;
+dur := sr / n ;
+
+write 'original dry sound' ;
+play sam sr ;
+sleep dur ;
+
+delays := [ 0.0497 , 0.0674 , 0.0738 , 0.075 ]
+
+y := normalize( schroeder sam delays 0.02 0.5 0.8 sr ) ;
+write 'mild reverb (small room)' ;
+play y sr ;
+sleep dur ;
+
+y := normalize( schroeder sam delays 0.02 0.75 2 sr ) ;
+write 'moderate reverb (recital hall)' ;
+play y sr ;
+sleep dur ;
+
+y := normalize( schroeder sam delays 0.02 0.8 4 sr ) ;
+write 'pronounced reverb (large concert hall)' ;
+play y sr ;

@@ -1,0 +1,30 @@
+loaddefs "sound_new;
+
+bach_file := makefilepath 'wav' 'artoffugue.wav';
+sohouse := makefilepath 'wav' 'SydneyOperaHouse01.wav';
+
+write bach_file;
+write sohouse;
+
+nch n sr bach := wavread bach_file ;
+nch n sr ir := wavread sohouse;
+
+write 'Play Bach fugue dry.' ;
+play bach sr ;
+
+z := convrvb ir bach ;
+write 'Play Bach fugue with the acoustics of Sydney Opera House.' ;
+play z sr ;
+
+z := artrvb bach 0.05 80.0 1.5 8 sr ;
+write 'Play Bach fugue with computed reverb.' ;
+play z sr ;
+
+z := multirvb bach (0.1 0.2 0.3) (0.5 0.2 0.1) 2 8 sr ;
+write 'Play Bach fugue with tapped delay line.' ; 
+play z sr ;
+
+delays := [ 0.0497 , 0.0674 , 0.0738 , 0.0753 ] ;
+write 'Play Bach fugue with Schroeder-type reverb.' ;
+z := normalize( schroeder bach delays 0.02 0.75 2 sr ) ;
+play z sr ;

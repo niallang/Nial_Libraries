@@ -1,0 +1,71 @@
+loaddefs "sound_new
+
+# In order to best gauge the accuracy of the leslie simulator I got a wav
+# file of an unaffected organ. The combination of a B3 organ and a leslie
+# rotating speaker can produce countless variations in sound. After
+# tweaking many parameters I was able to get some of the "cliche" leslie
+# sounds as well as some variations on B3 organ vibrato.
+
+# Unaffected Organ
+
+write  'unprocessed organ sound' ;
+nch n sr x := wavread makefilepath 'wav' 'artoffugue.wav' ;
+x := normalize( 2 * sr take x ) ;
+play x sr ;
+
+
+# Chorale 1: slow rotation of speaker with stereo phase shift. By setting
+# the lfo to approximately .45 rotations/sec and setting the vibrato depth
+# to .08 the rich phasyness of the slowly turning horn in the leslie is
+# reproduced.
+
+write 'slow rotation with stereo phase shift' ;
+y := leslie x 0.45 0.1 0.08 sr ;
+play y sr ;
+
+
+# Chorale 2: A slightly faster rotation/sec at .7 and smaller vibrato depth
+# create a marginally more intense leslie effect.
+
+write 'faster rotation with less vibrato depth' ;
+y := leslie x 0.7 0.1 0.05 sr ;
+play y sr ;
+
+
+# Tremolo (phasy): By increasing the lfo to 4.7 and raising the tremolo depth
+# to .8 creates a realistic leslie tremolo where the speakers are spinning
+# fast but not completely over the top.
+
+write 'phasy tremolo' ;
+y := leslie x 4.7 0.8 0.03 sr ;
+play y sr ;
+
+
+# Fast Tremolo: By increasing the lfo and lowering the vibrato depth a
+# leslie in full "swing" can be recreated. If the vibrato depth is more than
+# .02 when the lfo gets above 5 or 6 rotations per second the simulator does
+# not sound especially real. This may be because some of the phase and pitch
+# differences are less noticeable at high speeds on a real leslie.
+
+write 'fast tremolo' ;
+y := leslie x 6.7 1.6 0.009 sr ;
+play y sr ;
+
+#sleep 3.75 ;
+
+# Vibrato Chorale: This aims to reproduce the sound of the vibrato knob
+# found on many organs when the leslie speaker is barely spinning at all.
+ 
+write 'vibrato with minimal rotation' ;
+y := leslie x 2 0.006 0.009 sr ;
+play y sr ;
+
+#sleep 3.75 ;
+
+# Vibrato Tremolo: This aims to reproduce the vibrato of the organ at a
+# tremolo rate with minimal leslie rotation.
+
+write 'vibrato with some rotation' ;
+y := leslie x 5.6 1 0.001 sr ;
+play y sr ; 
+

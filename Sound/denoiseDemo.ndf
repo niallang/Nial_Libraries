@@ -1,0 +1,31 @@
+loaddefs "sound_new
+
+sr := 44100 ;
+
+t := 0.9 * sine 440 1 sr ;
+x := noise 1 sr ;
+
+write 'clean sine tone' ;
+play t sr ;
+
+write 'Add successively higher levels of noise and attempt to remove it.'
+
+write '-30 dB noise' ;
+y := denoise( t + ( dbfs2abs -30 * x ) ) ;
+play y sr ;
+
+write '-24 dB noise' ;
+y := denoise( t + ( dbfs2abs -24 * x ) ) ;
+play y sr ;
+
+write '-18 dB noise' ;
+y := denoise( t + ( dbfs2abs -18 * x ) ) ;
+play y sr ;
+
+write '-12 dB noise' ;
+y := denoise( t + ( dbfs2abs -12 * x ) ) ;
+play y sr ;
+
+write '-6 dB noise' ;
+y := denoise( t + ( dbfs2abs -6 * x ) ) ;
+play y sr ; 

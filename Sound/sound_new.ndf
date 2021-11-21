@@ -1,0 +1,2555 @@
+# SUPPORTING OPERATIONS
+
+
+
+sign IS OP x { abs ( x >= 0 ) - 0.5 * 2 }
+
+
+range IS OP B E { tell ( E - B + 1 ) + B }
+
+
+lg IS OP x { log x / log 2.0 }
+
+
+linspace IS OP B E N { B + ( ( E - B ) * ( tell N / ( N - 1 ) ) ) }
+
+
+mean IS OP x { sum x / tally x }
+
+
+round IS OP n {
+   IF n - floor n >= 0.5 THEN
+      ceiling n
+   ELSE
+      floor n
+   ENDIF
+}
+
+
+fix IS OP x {
+   IF x >= 0 THEN
+      y := floor x ;
+   ELSE
+      y := ceiling x ;
+   ENDIF ;
+   y
+}
+
+
+normalize IS OP x { x / max abs x }
+
+
+trim IS OP x y {
+   IF tally x < tally y THEN
+      y := tally x take y ;
+   ELSE
+      x := tally y take x ;
+   ENDIF ; 
+   x y
+}
+
+
+# Converts absolute units to dBFS.
+#
+#   y := abs2dbfs x ;
+#
+# Input:
+#   x = quantity expressed in absolute units, 0=<x<=1
+#
+# Ouput:
+#   y = quantity converted to dB Full Scale units
+
+abs2dbfs IS OP x { 20 * log x }
+
+
+# Converts dBFS to absolute units.
+#
+#   y := dbfs2abs x ;
+#
+# Input:
+#   x = quantity expressed in dB Full Scale, x<0
+#
+# Ouput:
+#   y = quantity converted to absolute units
+
+dbfs2abs IS OP x { 10 power ( x / 20 ) }
+
+
+# Converts MIDI note number to frequency in Hz
+#
+#   f := midi2freq m ;
+#     
+# Input:
+#   m = vector or matrix of MIDI note numbers (0-127)
+#
+# Output:
+#   f = vector or matrix of frequencies
+
+midi2freq IS OP m {  ( 440 / 32 ) * ( 2 power ( ( m - 9 ) / 12 ) ) }
+
+
+# Returns the MIDI note number of the "standard" frequency nearest to the
+# input frequency, f
+#
+#   nn := freq2midi f ;
+#
+# This function converts from a given frequency to the MIDI note number
+# of the equal-temperament frequency that lies closest to it (based on a 
+# reference frequency of A-440). This function and midi2freq are
+# therefore not exact inverses, i.e., midi2freq( freq2midi( f ) ) will
+# not necessarily return the original value of f.
+#
+# Input:
+#   f  = a frequency or vector of frequencies in Hz.
+#
+# Output:
+#   nn = the MIDI note number(s) most closely corresponding to f
+
+freq2midi IS OP f { round( 12 * ( lg( f / 16.3516 ) + 1 ) ) }
+
+
+
+# WINDOWS
+
+
+triangle IS OP n {
+   1 - abs( 1 - ( 2 * tell n / n ) )
+}
+
+
+hann IS OP N {
+   0.5 * ( 1 - cos( 2 * pi * tell N / N ) )
+}
+
+
+hamming IS OP n {
+   0.54 - ( 0.46 * cos( 2 * pi * tell n / n ) )
+}
+
+
+blackman IS OP n {
+   0.42 - ( 0.5 * cos( 2 * pi * tell n / n ) ) + ( 0.08 * cos( 4 * pi * tell n / n ) )   
+}
+
+
+tukey IS OP n r {
+   x := tell n / n ;
+   seg0 := ( 0 <= x ) and ( x < ( r / 2 ) ) sublist grid x ;
+   seg1 := ( ( r / 2 ) <= x ) and ( x < ( 1 - ( r / 2 ) ) ) sublist grid x ;
+   seg2 := ( ( 1 - ( r / 2 ) ) <= x ) and ( x <= 1 ) sublist grid x ;
+   x#seg0 := 0.5 * ( 1 + cos( ( 2 * pi / r ) * ( x#seg0 - ( r / 2 ) ) ) ) ;
+   x#seg1 := 1.0 ;
+   x#seg2 := 0.5 * ( 1 + cos( ( 2 * pi / r ) * ( x#seg2 - 1 + ( r / 2 ) ) ) ) ;
+   x
+}
+
+
+
+# COMPLEX
+
+
+# Get real and imaginary parts of a complex vector
+
+real_part IS _CRe;
+
+imaginary_part IS _CIm
+
+
+# fast convolution of real vectors x and y
+#
+#   cxy := fastconv x y ;
+#
+# Inputs:
+#   x = input vector (typically samples of an impulse response)
+#   y = input vector (typically sound samples)
+
+fastconv IS OP x y {
+   IF tally x >= tally y THEN
+      y := tally x take y ;
+   ELSE
+      x := tally y take x ;
+   ENDIF ;
+   fx := _fft_forward _r2c x ;
+   fy := _fft_forward _r2c y ;
+   normalize real_part ( _fft_backward ( _cprod fx fy ) )
+}
+
+
+atan2 IS OP z {
+   x := first first z ;
+   y := first second z ;
+   IF x > 0.0 THEN
+      res := arctan( y / x ) ;
+   ELSEIF y > 0.0 THEN
+      res := ( pi / 2.0 ) - arctan( x / y ) ;
+   ELSEIF y < 0 THEN
+      res := opp( pi / 2.0 ) - arctan( x / y ) ;
+   ELSEIF x < 0.0 THEN
+      res := arctan( y / x ) - pi ;
+   ELSE
+      write 'atan2: undefined' ;
+      res := null ;
+   ENDIF ;
+   res
+}
+
+
+amod IS OP x y {
+   x - ( floor( x / y ) * y )
+}
+
+
+
+# SFML DATA CONVERSIONS
+
+
+# convert a float sample to a pair of chars
+
+samp2char is op sample {
+   2 take ( raw_bytes floor( sample * 32767 ) )
+}
+
+
+# convert an array of floats to an array of chars
+
+samples2chararray is op samples {
+   content each samp2char samples 
+}
+
+
+# convert a pair of chars to a float sample
+
+char2samp is op chars {
+   t := sum( 1 256 * byterep chars ) ;
+   IF t < 32768 THEN
+      y := t / 32768 ;
+   ELSE
+      y := opp( 65536 - t / 32768 ) ;
+   ENDIF ;
+   y
+}
+
+
+# convert an array of chars to an array of floats
+
+chararray2samples is op chars {
+   byrows char2samp ( floor( tally chars / 2 ) 2 reshape chars )
+}
+
+
+# combine left- and right-channel sample arrays into stereo char array
+# format
+
+stereo is op left right {
+   samples2chararray content flip left right
+}
+
+
+# separate stereo samples into left and right channels
+
+destereo is op samp {
+    t := cols( floor( tally samp / 2 ) 2 reshape samp ) ;
+    ( content t@0 ) ( content t@1 )
+}
+
+
+
+# SOUND INPUT/OUTPUT OPS
+
+
+# play a mono array of samples
+
+play_mono is op samples sr {
+   chars := samples2chararray samples ;
+   soundBuffer := nsfml_soundbuffer_from_samples chars (tally samples) 1 sr ;
+   sound := nsfml_create_sound 0 ;
+   nsfml_sound_set_buffer sound soundBuffer ;
+   nsfml_play sound ;
+   sleep round ( 0.5 + ( tally samples / sr ) ) ;
+   nsfml_stop sound ;
+   nsfml_destroy sound ;
+}
+
+
+# play stereo left/right arrays of samples
+
+play_stereo is op left right sr {
+   chars := stereo left right ;
+   soundBuffer := nsfml_soundbuffer_from_samples chars ( 2 * tally left ) 2 sr ;
+   sound := nsfml_create_sound 0 ;
+   nsfml_sound_set_buffer sound soundBuffer ;
+   nsfml_play sound ;
+   nsamples := nsfml_get_sample_count soundBuffer ;
+   rate := nsfml_get_sample_rate soundBuffer ; 
+   sleep round ( 0.5 * nsamples / rate + 1 ) ;
+   nsfml_stop sound ;
+   nsfml_destroy sound ;
+}
+
+
+# Play mono or stereo sample vector(s)
+
+play is op samples sr {
+   IF shape samples = [2] THEN
+      play_stereo samples@0 samples@1 sr ;
+   ELSE
+      play_mono samples sr ;
+   ENDIF ;
+}
+
+
+# play a .wav file
+
+wavplay is op filename {
+   soundBuffer := nsfml_soundbuffer_from_file filename ;
+   sound := nsfml_create_sound 0 ;
+   nsfml_sound_set_buffer sound soundBuffer ;
+   nsfml_play sound ;
+   nchannels := nsfml_get_channel_count soundBuffer ;
+   nsamples := nsfml_get_sample_count soundBuffer ;
+   rate := nsfml_get_sample_rate soundBuffer ;
+   samples := nsfml_get_samples soundBuffer ;
+   write [ nchannels , nsamples , rate ] ;
+   sleep round ( 0.5 + ( nsamples / rate ) ) ;
+   nsfml_stop sound ;
+   nsfml_destroy sound ;
+}
+
+
+# read a .wav file, returning number of channels, number of samples,
+# sample rate, and samples
+
+wavread is op filename {
+   soundBuffer := nsfml_soundbuffer_from_file filename ;
+   sound := nsfml_create_sound 0 ;
+   nsfml_sound_set_buffer sound soundBuffer ;
+   nchannels := nsfml_get_channel_count soundBuffer ;
+   nsamples := nsfml_get_sample_count soundBuffer ;
+   rate := nsfml_get_sample_rate soundBuffer ;
+   IF nchannels = 1 THEN
+      samples := chararray2samples nsfml_get_samples soundBuffer ;
+   ELSE
+      samples := destereo chararray2samples nsfml_get_samples soundBuffer ;
+   ENDIF ;
+   nsfml_destroy sound ;
+   nchannels nsamples rate samples
+}
+
+
+# Write a .wav file from sample vector(s)
+
+wavwrite is op Filename samples sr {
+   IF shape samples = [2] THEN
+      chars := stereo samples@0 samples@1 ;
+      soundBuffer := nsfml_soundbuffer_from_samples chars ( 2 * tally samples@0 ) 2 sr ;
+   ELSE
+      chars := samples2chararray samples ;
+      soundBuffer := nsfml_soundbuffer_from_samples chars ( tally samples ) 1 sr ;
+   ENDIF ; 
+   nsfml_soundbuffer_to_file soundBuffer Filename ;
+}
+
+
+
+# OSCILLATORS AND WAVEFORM GENERATORS
+
+
+# Generate samples of a sine tone of specified frequency and duration
+# 
+#   y := cosine freq dur sr
+#
+# Inputs:
+#   freq = frequency in Hz.
+#   dur  = duration in seconds
+#   sr   = sample rate in samples per second
+
+cosine IS OP freq dur sr {
+   n := ceiling ( sr * dur ) ;
+   t := tell n / sr ;
+   cos( 2 * pi * freq * t )
+}
+
+
+# Generate samples of a sine tone of specified frequency and duration
+# 
+#   y := sine freq dur sr
+#
+# Inputs:
+#   freq = frequency in Hz.
+#   dur  = duration in seconds
+#   sr   = sample rate in samples per second
+
+sine IS OP freq dur sr {
+   n := ceiling ( sr * dur ) ;
+   t := tell n / sr ;
+   sin( 2 * pi * freq * t )
+}
+
+
+# Generate samples of a sawtooth wave of specified frequency and duration
+#
+#   y := sawtooth freq dur sr
+#
+# Inputs:
+#   freq = frequency in Hz
+#   dur  = duration in seconds
+#   sr   = sampling rate in samples per second
+#
+
+sawtooth IS OP freq dur sr {
+   n := ceiling ( dur * sr ) ;
+   cycle := floor( sr / freq ) ;
+   2 * ( n reshape linspace 0 1 cycle ) - 1
+}
+
+
+# Generate a squarewave
+#
+#   y := square freq dur sr
+#
+# Inputs:
+#   freq = frequency in Hz.
+#   dur  = duration in seconds
+#   sr   = sample rate in samples per second
+
+square IS OP freq dur sr {
+   sign sine freq dur sr
+}
+
+
+# Generate samples of a triangle wave of specified frequency and duration
+#
+#   y := tri freq dur sr
+#
+# Inputs:
+#   freq = frequency in Hz
+#   dur  = duration in seconds
+#   sr   = sampling rate in samples per second
+
+tri IS OP freq dur sr {
+   n := floor( sr / freq ) ;
+   y := 1.0 - abs( 1.0 - ( 2.0 * tell n / n ) ) ;
+   floor( dur * sr ) reshape ( y - 0.5 * 2.0 )
+}
+
+
+# Generic oscillator. Creates a periodic signal from an arbitrary
+# user-supplied wave table. The table contains one cycle of the desired
+# waveform. The first and last items in the wave table must be identical.
+# The table can be created with one of the other  oscillator functions.
+# For example, a table of 513 samples of a single sinewave cycle can be
+# created with
+#
+#    wave := sine 1 1 512 ;
+#    wave := wave link 0 ;
+#
+# Inputs:
+#   wave = a user-supplied vector of one cycle of the desired waveform
+#   freq = frequency of the desired signal in Hz
+#   phs  = starting phase, degrees, [0,360]
+#   dur  = signal duration in seconds
+#   sr   = sample rate in samples per second
+
+osc IS OP wave freq phs dur sr {
+   lwave := tally wave ;
+   si := lwave * freq / sr ;
+   n := floor( dur * sr ) ;
+   start := floor( lwave * phs / 360 ) ;
+   wave#( floor( start + ( si * tell n ) ) mod lwave )
+}
+
+
+# Generic oscillator whose frequency is determined by a
+# time-varying control signal in the range [0,1]. If the control signal
+# goes below 0, the oscillator's frequency will be the lower limit
+# frequency. The output waveform is specified by an arbitrary user-
+# supplied wave table. The table contains one cycle of the desired
+# waveform. The first and last items in the wave table must be identical.
+# The table can be created with one of the other oscillator functions.
+# For example, a table of 513 samples of a single sinewave cycle can be
+# created with
+#
+#    wave := sine 1 1 512 ;
+#    wave := wave link 0.0 ;
+#
+#    y := vco wave cfreq ctrl depth phs sr ;
+#
+# Inputs:
+#   wave  = user-supplied table of one cycle of a desired waveform
+#   cfreq = oscillator center frequency in Hz
+#   ctrl  = control signal in the range [0,1]
+#   depth = depth of modulation, >0
+#   phs   = phase in degrees
+#   sr    = sample rate in samples per second
+
+VCO IS OP wave cfreq ctrl depth phs sr {
+   lwave := tally wave ;
+   n := tally ctrl ;
+   ctrl := depth * ctrl + 1 ;
+   i := lwave * ( cfreq * ctrl ) / sr ;
+   si := ( each round accumulate + i ) mod lwave ;
+   wave#( floor si )
+}
+
+
+# Generates a stream of unit impulses at the specified frequency and
+# duration.
+#
+#   y := spike freq dur sr ;
+#
+# Inputs:
+#   freq = frequency in Hz.
+#   dur  = duration in seconds
+#   sr   = sample rate in Hz.
+
+spike IS OP freq dur sr {
+  n := ceiling( dur * sr ) ;
+  s := tell n ;
+  t := ceiling( sr / freq ) ;
+  abs( s mod t match 0 ) / 1.0
+}
+
+
+# Creates a unit impulse centered within an array of zeroes of specified
+# length (i.e., the Dirac delta function)
+#
+#   y := unit n ;
+#
+# Inputs:
+#   m = length of the array in which the unit impulse occurs
+
+unit IS OP n {
+  y := n reshape 0.0 ;
+  i := floor( n / 2 ) ;
+  y@i := 1.0 ;
+  y
+}
+
+
+# noise source
+#
+#   y := noise dur sr ;
+#
+# Inputs:
+#   dur = duration in seconds
+#   sr  = sample rate in samples per second
+
+noise IS op dur sr {
+   x := random floor ( dur * sr ) ;
+   normalize( ( x – mean x ) * 2.0 )
+}
+
+
+# A one-shot oscillator. Creates one cycle of an arbitrary waveform
+# defined in a user-supplied wave table. The table contains one cycle of
+# the desired waveform. A partial cycle can be obtained by specifying
+# start and finish values within the cycle.
+#
+# Example:
+#   s := sine 1 1 65536 ;
+#   y := one_shot 2 s 0.25 0.75 44100 ;
+#
+# Usage: 
+#
+#   y := one_shot dur wave start finish sr ;
+#
+# Inputs:
+#   dur    = signal duration in seconds
+#   wave   = a user-supplied vector of one cycle of the desired waveform
+#   start  = fraction of cycle where output begins: 0<=start<=1
+#   finish = fraction of cycle where output ends: start<finish<=1
+#   sr     = sample rate in samples per second
+#
+# Output:
+#   vector of samples
+ 
+one_shot IS OP dur wave start finish sr {
+   lwave  := tally wave - 1 ;
+   poss   := ceiling( start * lwave ) ;
+   posf   := floor( finish * lwave ) ;
+   wave   := wave#( range poss posf ) ;
+   lwave  := tally wave ;
+   an     := floor( dur * sr ) ;
+   si     := recip an * lwave ;
+   n      := floor an ;
+   pos    := 0 ;
+   i      := each round accumulate + ( pos link ( an reshape si ) ) ;
+   i      := i < lwave sublist i ;
+   wave#i
+}
+
+
+# ENVELOPE GENERATORS
+
+
+# Uses a control signal to regulate the gain of the input signal. The
+# input signal should be in the range [0,1]. If the control signal goes
+# negative, the negative segments(s) will be set to zero. If the input
+# signal and the control signal are not of the same length, the longer
+# will be trimmed to the length of the shorter.
+#
+#   y  := vca x ctrl ;
+#
+# Inputs:
+#   x     := input signal
+#   ctrl  := control signal, [ 0 , 1 ]
+#
+
+vca IS OP x ctrl {
+  ctrl x := trim( ctrl x ) ;
+  ctrl#( ctrl < 0 sublist grid ctrl ) := 0 ;
+  x * ctrl
+}
+
+
+# Generates a multi-segment linear envelope. The envelope can be applied
+# to a signal with vca.
+#
+#   y := env amp dur sr
+#
+# Inputs:
+#   amp = vector containing the amplitudes at the end of each segment
+#         (starting amplitude is always 0)
+#   dur = vector containing the durations of the segments
+#   sr  = sample rate in samples per second
+
+env IS OP amp dur sr {
+   IF tally amp = tally dur THEN
+      n := tally amp ;
+      start := 0 ;
+      a := 1 ;
+      y := null ;
+      FOR i WITH tell n DO
+         nsamples := floor( dur@i * sr ) ;
+         b := a + nsamples - 1 ;
+         finish := amp@i ;
+         step := ( finish - start ) / nsamples ;
+         y := y link linspace start ( finish - step ) ( b - a + 1 ) ;
+         a := b + 1 ;
+         start := finish ;
+      ENDFOR ;
+   ELSE
+      write 'lengths of amp and dur arrays do not match' ;
+      y := null ;
+   ENDIF ;
+   y
+}
+
+
+# Attenuates the first fa*sr elements of the vector x linearly from 0 to 1.
+#
+#   signal := FadeIn x fa sr ;
+#
+# Inputs:
+#   x  = input signal
+#   fa = fade-in time in seconds
+#   sr = sample rate in samples per second
+
+FadeIn IS OP x fa sr {
+   IF fa > 0 THEN
+      nsamples := floor( fa * sr ) ;
+      step := fa / nsamples ;
+      signal := x ; 
+      p := linspace 0 ( fa - step) nsamples / fa ;
+      IF tally p <= tally x THEN
+         signal#( grid p ) := p * signal#( grid p ) ;
+      ELSE
+         signal := p#( grid x ) * signal ;
+      ENDIF ;
+   ELSEIF fa < 0 THEN
+      Write 'FadeIn Warning: fade-in time less than 0.' ;
+      signal := x ;
+   ENDIF ;
+   signal
+}
+
+
+# Attenuates the last fa*sr elements of the vector x linearly from 1 to 0
+#
+#   y := FadeOut x fa sr ;
+#
+# Inputs:
+#   x  = input signal
+#   fa = fade-out time, in seconds
+#   sr = sample rate in samples per second
+
+FadeOut IS OP x fa sr {
+   IF fa > 0 THEN
+      nsamples := floor( fa * sr ) ;
+      step := fa / nsamples ;
+      signal := reverse x ; 
+      p := linspace 0 ( fa - step) nsamples / fa ;
+      IF tally p <= tally x THEN
+         signal#( grid p ) := p * signal#( grid p ) ;
+      ELSE
+         signal := p#( grid x ) * signal ;
+      ENDIF ;
+   ELSEIF fa < 0 THEN
+      Write 'FadeOut Warning: fade-in time less than 0.' ;
+      signal := x ;
+   ENDIF ;
+   reverse signal   
+}
+
+
+# A simple attack/release envelope shaper
+#
+#   y := a_r x at rt sr ;
+#
+# Inputs:
+#   x  = input signal
+#   at = attack time in seconds
+#   rt = release time in seconds
+#   sr = sample rate in samples per second
+
+a_r IS OP x at rt sr {
+   y := FadeIn x at sr ;
+   y := FadeOut y rt sr
+}
+
+
+# Creates an exponential attack. The amplitude of the output rises from 0
+# to 1 over dur seconds.
+#
+#   y := expattack dur k sr ;
+#
+# Inputs:
+#   dur = duration of attack in seconds
+#   k   = attack constant (k=8 typical)
+#   sr  = sample rate in samples per second
+
+expattack IS OP dur k sr {
+   n := ceiling ( dur * sr ) ;
+   t := tell n / n ; 
+   2 power ( k * t ) - 1 / ( 2 power k )
+}
+
+
+# Creates an exponential decay. The amplitude of the output decays from 1
+# to 2^(-k) over dur seconds.
+#
+#   y := expdecay dur k sr ;
+#
+# Inputs:
+#   dur = duration of decay in seconds
+#   k   = decay constant (k=8 typical)
+#   sr  = sample rate in samples per second
+
+expdecay IS OP dur k sr {
+   n := ceiling( dur * sr ) ;
+   t := tell n / n ; 
+   2 power ( opp k * t )
+}
+
+
+# A simple attack/release envelope shaper similar to the function a_r,
+# except that the attack and release are exponential rather than linear.
+#
+#   y := expa_r x at rt ka kr sr ;
+#
+# Inputs:
+#   x  = input signal
+#   at = attack time in seconds
+#   rt = release time in seconds
+#   ka = attack constant (ka=8 typical)
+#   kr = release constant (kr=8 typical)
+#   sr = sample rate in samples per second
+
+expa_r IS OP x at rt ka kr sr {
+   lenx := tally x ;
+   natt := floor( at * sr ) ;
+   nrel := floor( rt * sr ) ;
+   IF ( natt > lenx ) or ( nrel > lenx ) THEN
+      write 'attack or release time too long' ;
+      signal := x ;
+   ELSE
+      za := expattack at ka sr ;
+      nsamples := floor( at * sr ) ;
+      IF tally za > nsamples THEN
+          za := nsamples take za ;
+      ENDIF ;
+      step := at / nsamples ;
+      signal := x ; 
+      IF tally za <= tally x THEN
+         signal#( tell nsamples ) := za * signal#( tell nsamples ) ;
+      ELSE
+         signal  := za#( tell nsamples ) * signal ;
+      ENDIF ;
+      zb := reverse expdecay rt kr sr ;
+      nsamples := floor( rt * sr ) ;
+      IF tally zb > nsamples THEN
+         zb := nsamples take zb ;
+      ENDIF ;
+      step := rt / nsamples ;
+      signal := reverse signal ;
+      IF tally zb <= tally x THEN
+         signal#( tell nsamples ) := zb * signal#( tell nsamples ) ;
+      ELSE
+         signal  := zb#( tell nsamples ) * signal ;
+      ENDIF ;
+      signal := reverse signal ;
+   ENDIF ;
+   signal  
+}
+
+
+# Linear crossfade between two vectors of samples
+#
+#   y := crossfade a b overlap sr ;
+#
+# Inputs:
+#   a , b   = input signals
+#   overlap = duration of crossfade in seconds
+#   sr      = sample rate in samples per second
+
+crossfade IS OP a b overlap sr {
+  ovlen := floor( overlap * sr ) ;
+  IF ( ovlen > tally a ) OR ( ovlen > tally b ) THEN
+     write 'overlap must be shorter than either input vector' ;
+     y := null ;
+  ENDIF ;
+  a := FadeOut a overlap sr ;
+  b := FadeIn b overlap sr ;
+  a1 := a link ( ( tally b - ovlen ) reshape 0.0 ) ;
+  b1 := ( ( tally a - ovlen ) reshape 0.0 ) link b ;
+  a1 + b1
+}
+
+
+
+# TREMOLO AND VIBRATO
+
+ 
+# Applies tremolo (low-frequency amplitude modulation) to the input
+# signal.
+#
+#   y := tremolo x lfo mi sr ;
+#
+# Inputs:
+#   x   = input signal
+#   lfo = tremolo frequency in Hz.
+#   mi  = modulation index (normally in the range 0-1)
+#   sr  = sample rate in samples per second
+
+tremolo IS OP x lfo mi sr { 
+   n  := tally x ;
+   t  := tell n / sr ;
+   m  := mi * sin( 2 * pi * lfo * t ) + 1 ;
+   normalize( m * x )
+}
+
+
+# Applies vibrato (low-frequency frequency modulation) to the input
+# signal.
+# This is the original (slow!) algorithm.
+#
+#   y  := vibrato x lfo mi sr ;
+#
+# Inputs:
+#   x    := input signal
+#   lfo  := vibrato frequency (5-8 Hz. typical)
+#   mi   := the depth of vibrato (0.05 typical)
+#   sr   := sample rate in samples per second
+
+vibrato IS OP x lfo mi sr {
+   Delay := 0.01 ;
+   DELAY := round( Delay * sr ) ;
+   MODFREQ := lfo / sr ;
+   LEN := tally x ;
+   DL2 := 2 + DELAY + ( DELAY * 2 ) ;
+   Delayline := DL2 reshape 0.0 ;
+   y := LEN reshape 0.0 ;
+   FOR n WITH tell ( LEN - 1 ) DO
+      M := MODFREQ ;
+      MOD := mi * sin( M * 2 * pi * n ) ;
+      ptr := 1 + DELAY + ( DELAY * MOD ) ;
+      i := floor ptr ;
+     frac := ptr - i ;
+     Delayline := x@n link ( 1 dropright Delayline ) ;
+     y@n := Delayline@( i + 1 ) * frac + ( Delayline@i * ( 1 - frac ) ) ;
+   ENDFOR ;
+   floor( 2 * DELAY ) drop y
+}
+
+
+# Vibrato with some computations moved outside the loop
+
+vibrato2 IS OP x lfo mi sr {
+   Delay := 0.01 ;
+   DELAY := round( Delay * sr ) ;
+   MODFREQ := lfo / sr ;
+   LEN := tally x ;
+   DL2 := 2 + DELAY + ( DELAY * 2 ) ;
+   Delayline := DL2 reshape 0.0 ;
+   Indices := tell (LEN - 1) ;
+   ModVals := mi*sin (MODFREQ*2*PI*Indices) ;
+   Ptrs  := 1 + DELAY + (DELAY*ModVals) ; 
+   IVals := floor Ptrs ;
+   Fracs := Ptrs - IVals ;
+   y := LEN reshape 0.0 ;
+   FOR n WITH Indices DO
+      i := IVals@n ;
+      frac := Fracs@n ;
+      Delayline := x@n hitch (1 dropright Delayline) ;
+      y@n := Delayline@( i + 1 ) * frac + ( Delayline@i * ( 1 - frac ) ) ;
+   ENDFOR ;
+   floor( 2 * DELAY ) drop y
+}
+
+
+# Fully vectorized vibrato
+
+vibrato3 IS OP x lfo mi sr {
+   Delay := 0.01 ;
+   DELAY := round( Delay * sr ) ;
+   MODFREQ := lfo / sr ;
+   Indices := tell ((tally x) - 1) ;
+   ModVals := mi*sin (MODFREQ*2*PI*Indices) ;
+   Ptrs  := 1 + DELAY + (DELAY*ModVals) ;
+   IVals := floor Ptrs ;
+   Fracs := Ptrs - IVals ; 
+   DL2 := 2 + DELAY + ( DELAY * 2 ) ;
+   Delayline := ((DL2 - 1) reshape 0.0) link x ;
+   XV1   := (Indices + DL2 - Ivals - 1) choose DelayLine ;
+   XV2   := (Indices + DL2 - IVals - 2) choose Delayline ;
+   y     := XV2*Fracs + (XV1*(1 - Fracs)) ;
+   floor( 2 * DELAY ) drop y
+}
+
+
+
+# DELAY LINE-BASED EFFECTS
+
+
+# Allpass filter, which is typically used as a component of the Schroeder
+# reverb unit.
+#
+#   y := allpdelay x dly g sr ;
+#
+# Inputs:
+#   x   = input signal
+#   dly = length of delay in seconds
+#   g   = gain, [0,1]
+#   sr  = sample rate in samples per second
+
+allpdelay IS OP x dly g sr {
+   lenx := tally x ;
+   y := lenx reshape 0.0 ;
+   dlen := ceiling ( dly * sr ) ;
+   Delayline := dlen reshape 0.0 ;
+   ptr := 0 ;
+   FOR n WITH tell lenx DO
+      y@n := opp g * x@n + Delayline@ptr ;
+      Delayline@ptr := g * y@n + x@n ;
+      ptr := ptr + 1 ;
+      IF ptr >= dlen THEN
+         ptr := 0 ;
+      ENDIF ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# A single-delay fir comb filter.
+#
+#   y := firdelay x dly g sr ;
+#
+# Inputs:
+#   x   = input signal
+#   dly = delay time in seconds. Standard effects based on the length of 
+#         the delay are:
+#             0 - .020 sec    = resonator
+#            .025 - .050 sec  = slapback
+#            .050 sec         = echo
+#   g   = gain [0,1]
+#   sr  = sample rate in samples per second	 
+
+firdelay IS OP x dly g sr {  
+   dlen := ceiling( dly * sr ) ;
+   Delayline := ( tally x ) take ( ( dlen reshape 0.0 ) link x ) ;
+   normalize ( x + ( g * Delayline ) )
+}
+
+
+# A single-delay iir comb filter. This can be used for simple echo and
+# reverb effects.
+#
+#   y := iirdelay x dly g sr ;
+#
+# Inputs:
+#   x   = input signal
+#   dly = delay time in seconds
+#   g   = gain (0-1)
+#   sr  = sample rate in samples per second
+
+iirdelay IS OP x dly g sr {
+   lenx := tally x ;
+   y := lenx reshape 0.0 ;
+   dlen := ceiling( dly * sr ) ;
+   Delayline := dlen reshape 0 ;
+   ptr := 0 ;
+   FOR n WITH tell lenx DO
+      y@n := x@n + ( g * Delayline@ptr ) ;
+      Delayline@ptr := y@n ;
+      ptr := ptr + 1 ;
+      IF ptr >= dlen THEN
+         ptr := 0 ;
+      ENDIF ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# Universal (fir and iir) comb filter with a single delay. See
+# unidelay_demo for a demonstration of the wide variety of effects that
+# can be otained with unidelay.
+#
+#   y := unidelay x BL FB FF dly sr ;
+#
+# Inputs:
+#   x   = input signal
+#   BL  = blend control for feedforward of input sample [0,1]
+#   FB  = gain for feedback (iir) [0,1]
+#   FF  = gain for feedforward (fir) [0,1]
+#   dly = length of delay in seconds
+#   sr  = sample rate in seconds
+
+unidelay IS OP x BL FB FF dly sr {
+   lenx := tally x ;
+   y := lenx reshape 0.0 ;
+   dlen := ceiling( dly * sr ) ;
+   Delayline := dlen reshape 0.0 ;
+   ptr := 0 ;
+   FOR n WITH tell lenx DO
+      xh := x@n + ( FB * Delayline@ptr ) ;
+      y@n := FF * Delayline@ptr + ( BL * xh ) ; 
+      Delayline@ptr := xh ;
+      ptr := ptr + 1 ;
+      IF ptr >= dlen THEN
+         ptr := 0 ;
+      ENDIF ;
+   ENDFOR ;
+   normalize y  
+}
+
+
+# A Schroeder-type reverb.
+#
+#   y := schroeder x delays apdelay apgain rt60 sr {
+#
+# Inputs:
+#   x       = input vector of samples
+#   delays  = row vector of delay line (comb filter) lengths in seconds
+#             example delays: [ 0.0497    0.0674    0.0738    0.0750 ].
+#             As many delays as desired may be used.
+#   apdelay = allpass filter delay in seconds (e.g., 0.02)
+#   apgain  = allpass filter gain (e.g., 0.5)
+#   rt60    = the time taken for a sound to die away to one thousandth of
+#             its original sound level, in seconds (e.g., 0.2 to 0.5 
+#             second for speech, 0.6 to 0.8 second for classical music) 
+#   sr      = sample rate in samples per second
+
+schroeder IS OP x delays apdelay apgain rt60 sr {
+   delays := each round ( delays * sr ) ;
+   apdelay := round( apdelay * sr ) ;
+   Kp := 10 power ( ( -3 * delays ) / ( rt60 * sr ) ) ;
+   alpha := 0.25 ;
+   Bp := tally delays reshape 1.0 - ( 2 / ( 1 + ( Kp power ( 1 - recip alpha ) ) ) ) ;
+   beta := Kp * ( 1.0 - Bp ) ;
+   lp_d := tally delays reshape 0.0 ;
+   y := tally x reshape 0.0 ;
+   delaylines := [ tally delays , max delays ] reshape 0.0 ;
+   apdelaylines := [ 2 , max apdelay ] reshape 0.0;
+   dl_p := tally delays reshape 0 ;
+   ap_dlp := 0 ;
+   temp_out := tally delays reshape 0.0 ;
+   ap_out := 0.0 ;
+   FOR i WITH tell tally x DO
+      FOR j WITH tell tally delays DO
+         y@i := y@i + temp_out@j ;
+         delaylines@[ j , dl_p@j ] := x@i + temp_out@j ; 
+         dl_p@j := ( ( dl_p@j ) + 1 ) mod ( ( delays@j ) ) ;
+         temp_out@j := ( delaylines@[ j , dl_p@j ] + ( Bp@j * lp_d@j ) ) * beta@j ;
+         lp_d@j := delaylines@[ j , dl_p@j ] ;
+      ENDFOR ;
+      apdelaylines@[ 1 , ap_dlp ] := y@i + ( ap_out * apgain ) ;	   
+      ap_dlp := ( ap_dlp + 1 ) mod ( apdelay ) ;
+      ap_out := apdelaylines@[ 1 , ap_dlp ] - ( apgain * y@i ) ;   
+      y@i := ap_out + x@i ;
+   ENDFOR ;
+   y
+}
+
+
+
+# FILTERS
+
+
+# Applies a lowpass filter to the input signal
+#
+#  y := aplowpass IS OP x fc sr ; 
+#
+# Inputs:
+#   x  = input signal
+#   fc = cutoff frequency in Hz
+#   sr = sample rate in samples per second
+# Output:
+#   vector of samples
+
+aplowpass IS OP x fc sr {
+   Wc := 2.0 * fc / sr ;
+   c := ( tan( pi * Wc / 2.0 ) - 1.0 ) / ( tan( pi * Wc / 2.0 ) + 1.0 ) ;
+   xh := 0.0 ;
+   y := tally x reshape 0.0 ;
+   FOR n WITH tell tally x DO
+      xh_new := x@n - ( c * xh ) ;
+      ap_y := c * xh_new + xh ;
+      xh := xh_new ;
+      y@n := 0.5 * ( x@n + ap_y ) ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# Applies a highpass filter to the input signal
+#
+#  y := aphighpass IS OP x fc sr ; 
+#
+# Inputs:
+#   x  = input signal
+#   fc = cutoff frequency in Hz
+#   sr = sample rate in samples per second
+# Output:
+#   vector of samples
+
+aphighpass IS OP x fc sr {
+   Wc := 2.0 * fc / sr ;
+   c := ( tan( pi * Wc / 2.0 ) - 1.0 ) / ( tan( pi * Wc / 2.0 ) + 1.0 ) ;
+   xh := 0.0 ;
+   y := tally x reshape 0.0 ;
+   FOR n WITH tell tally x DO
+      xh_new := x@n - ( c * xh ) ;
+      ap_y := c * xh_new + xh ;
+      xh := xh_new ;
+      y@n := 0.5 * ( x@n - ap_y ) ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# Applies a bandpass filter to the input signal
+#
+#   y = apbandpass (x, Fc, Fb, sr)
+#
+# Inputs:
+#   x  = input signal
+#   Fc = center frequency in Hz
+#   Fb = width of the passband in Hz
+#   sr = sample rate in samples per second
+
+apbandpass is op x Fc Fb sr {
+   Wc:= 2.0 * Fc / sr ;
+   Wb:= 2.0 * Fb / sr ;
+   c := ( tan( pi * Wb / 2.0 ) - 1.0 ) / ( tan( pi * Wb / 2.0 ) + 1.0 ) ;
+   d := opp cos( pi * Wc ) ;
+   xh := [ 0.0 , 0.0 ] ;
+   y := tally x reshape 0.0 ;
+   FOR n WITH tell tally x DO
+      xh_new := x@n - ( d * ( 1.0 - c ) * xh@0 ) + ( c * xh@1 ) ;
+      ap_y :=  opp c * xh_new + ( d * ( 1.0 - c ) * xh@0 ) + xh@1 ;
+      xh := [ xh_new , xh@0 ] ;
+      y@n := 0.5 * ( x@n - ap_y ) ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# Applies a bandstop filter to the input signal
+#
+#   y = apbandstop (x, Fc, Fb, sr)
+#
+# Inputs:
+#   x  = input signal
+#   Fc = center frequency in Hz
+#   Fb = width of the stopband in Hz
+#   sr = sample rate in samples per second
+
+apbandstop is op x Fc Fb sr {
+   Wc:= 2.0 * Fc / sr ;
+   Wb:= 2.0 * Fb / sr ;
+   c := ( tan( pi * Wb / 2.0 ) - 1.0 ) / ( tan( pi * Wb / 2.0 ) + 1.0 ) ;
+   d := opp cos( pi * Wc ) ;
+   xh := [ 0.0 , 0.0 ] ;
+   y := tally x reshape 0.0 ;
+   FOR n WITH tell tally x DO
+      xh_new := x@n - ( d * ( 1.0 - c ) * xh@0 ) + ( c * xh@1 ) ;
+      ap_y :=  opp c * xh_new + ( d * ( 1.0 - c ) * xh@0 ) + xh@1 ;
+      xh := [ xh_new , xh@0 ] ;
+      y@n := 0.5 * ( x@n + ap_y ) ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# a resonant bandpass filter
+#
+#   y  := flt x F D R ;
+#
+# Inputs:
+#   x = input signal
+#   F = the center frequency of the filter in Hz.
+#   D = the half-bandwidth of the filter in Hz.
+#   R = the sample rate in samples per second
+
+flt IS OP x F D R {   
+   I2 := 2 * exp( -2 * pi * D / R ) * cos( 2 * pi * F / R ) ;
+   I3 := exp( opp 4 * pi * D / R ) ;
+   n := tally x ;
+   y := n reshape 0.0 ;
+   prev1 := 0 ;
+   prev2 := 0 ;
+   FOR i WITH tell n DO
+      y@i := x@i + ( ( I2 * prev1 ) - ( I3 * prev2 ) ) ;
+      prev2 := prev1 ;
+      prev1 := y@i ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# Applies a control signal to a resonant filter to continuously update
+# its center frequency.
+#
+#   y  := vcf x ctrl fl fh d sr ;
+#
+# Inputs:
+#   x     := input signal
+#   ctrl  := control signal (row vector, [ 0 , 1 ])
+#   fl    := lowest center frequency of the filter in Hz.
+#   fh    := highest center frequency of the filter in Hz.
+#   d     := half-bandwidth of the filter in Hz. (100 Hz. typical)
+#   sr    := sample rate in samples per second
+
+vcf IS OP x ctrl fl fh d sr {
+   ctrl x := trim ctrl x ;
+   n := tally x ;
+   F := fl + ( ctrl * ( fh - fl ) ) ;
+   I2 := 2 * exp( -2 * pi * d / sr ) * cos( 2 * pi * F / sr ) ;
+   I3 := exp( -4 * pi * d / sr ) ;
+   y := n reshape 0.0 ;
+   prev1 := 0.0 ;
+   prev2 := 0.0 ;
+   FOR i WITH tell n DO
+      y@i := x@i + ( I2@i * prev1 ) - ( I3 * prev2 ) ;
+      prev2 := prev1 ;
+      prev1 := y@i ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# Formant synthesizer. See formantDemo for a demonstration of the use of
+# this function to create vowel sounds.
+#
+#   y := formant f0 f1 f2 f3 dur sr ;
+#
+# Inputs:
+#   f0         = fundamental frequency in Hz.
+#   f1, f2, f3 = formant frequencies in Hz.
+#   dur        = duration in seconds
+#   sr         = sample rate in samples per second
+
+formant IS OP f0 f1 f2 f3 dur sr {
+  saw := sawtooth 1 1 512 link -1 ;
+  x := osc saw f0 0 dur sr ;
+  x := flt x f1 20 sr ;
+  x := flt x f2 20 sr ;
+  flt x f3 20 sr
+}
+
+
+
+# SPATIAL EFFECTS
+
+
+# Tangent law stereophonic panning. This function assumes the stereo
+# field is 60 degrees wide. The apparent direction of the sound source
+# can be set to any angle between -30 (all the way left) to +30 (all the
+# way right).
+#
+#   y := stereopan x theta ;
+#
+# Inputs:
+#   x     = input sound vector
+#   theta = azimuth of source relative to listener in degrees
+
+stereopan IS OP x theta {
+   eps := 2.0 power -52.0 ;
+   g := 2 reshape 0.0 ;
+   lsbase := 30.0 ;
+   theta := theta / 180.0 * pi ;
+   lsbase := lsbase / 180.0 * pi ;
+   g@1 := 1.0 ;
+   g@0 := opp ( tan theta - tan lsbase ) / ( tan theta + tan lsbase + eps ) ;
+   g := g / sqrt sum( g power 2 ) ;
+   left := x * g@0 ;
+   right := x * g@1 ;
+   left right
+}
+
+
+# Delay-based panning. Moves apparent sound source away from the selected
+# channel.
+#
+#   y := delaypan x ch delay sr ;
+#
+# Inputs:
+#   x     = input mono signal
+#   ch    = channel to be delayed ( "L or "R )
+#   delay = delay for selected channel in seconds (0.05 - 0.005 typical)
+#   sr    = sample rate in samples per second
+
+delaypan IS OP x ch delay sr { 
+   delaysamp := round( delay * sr ) ;
+   sam := tally x - delaysamp take x ;
+   dly := delaysamp reshape 0.0 link sam ;
+   IF ch = "L THEN
+      y := dly x ;
+   ELSEIF ch = "R THEN
+      y := x dly ;
+   ELSE
+      write 'delaypan: bad channel' ;
+      y := x x ;
+   ENDIF ;
+   y
+}
+
+
+# Applies amplitude modulation to the input signal.
+#
+# y := AM x rate phase depth sr ;
+#
+# Inputs:
+#   x     = input signal
+#   rate  = LFO frequency in Hz.
+#   phase = phase angle in degrees
+#   depth = depth of modulation (normally in the range [0,1])
+#   sr    = sample rate in samples per second
+
+AM IS OP x rate phase depth sr {
+   phi := pi * phase / 180.0 ;
+   t := tell tally x / sr ;
+   m := 1 + ( depth * sin( 2 * pi * rate * t + phi ) ) ;
+   normalize( m * x )
+}
+
+
+# Pans the input signal back and forth between the left and right
+# channels
+#
+#   y := autopan x rate phase depth sr ;
+#
+# Inputs:
+#   x     = input signal
+#   rate  = LFO frequency in Hz.
+#   phase = relative phase angle in degrees between channels
+#   depth = depth of modulation index (normally in the range [0,1])
+#   sr    = sample rate in samples per second
+
+autopan IS OP x rate phase depth sr { 
+   right := AM x rate phase depth sr ;
+   left  := AM x rate 0 depth sr ;
+   left right
+}
+
+
+
+# PITCH-SHIFTING AND RESAMPLING
+
+
+# Raises the pitch of the input signal by up to one octave (i.e.,
+# a factor of 2) producing the "chipmunk" or "munchkin" effect.
+# NB: deci also cuts the length of the input signal by a factor of
+# 1/ratio.
+#
+#   y := deci x ratio ;
+#
+# Inputs:
+#   x       = input signal
+#   ratio   = pitch increase factor: 1 <= ratio <= 2
+
+
+deci IS OP x ratio {
+   N := tally x ;
+   IF ( ratio < 1 ) or ( ratio > 2 ) THEN
+      write 'deci: ratio<1 or ratio>2' ;
+      y := x ;
+   ELSE
+      y := 1 + floor( recip ratio * N ) reshape 0.0 ;
+      Nd := floor( N - 1 / ratio ) + 1 ;
+      y#( tell Nd ) := x#( tell Nd ) ;
+      FOR k WITH tell ( Nd - 1 ) DO
+         k1 := floor( k * ratio ) ;
+         y@( k+1 ) := x@( k1+1 )+ ( ( k * ratio - k1 ) * ( x@( min N ( k1 + 2 ) ) - x@( k1 + 1 ) ) ) ;
+      ENDFOR ;
+   ENDIF ;
+   y
+}
+
+
+# Quick-and-dirty playback speed control. If ratio is greater than 1,
+# playback will be speeded up by a factor of ratio. If ratio is less
+# than 1 and greater than 0, playback will be will be slowed by a
+# factor of ratio. Duration will be changed by a factor of 1/ratio.
+
+speed IS OP x ratio {
+   IF ratio > 1.0 THEN
+      si := each round( accumulate + ( tally x - 1 reshape ratio ) ) ;
+      si := si < tally x sublist si ;
+      y := x#si ;
+   ELSEIF ratio > 0.0 THEN
+      len := floor( recip ratio * tally x ) ;
+      si := each round ( accumulate + ( len reshape ratio ) ) ;
+      si := si < tally x sublist si ;  
+      y := x#si ;
+   ELSE
+      write 'speed: ratio <= 0' ;
+      y := x ;
+   ENDIF;
+   y
+}
+
+
+
+# Shifts the pitch of the input signal down by linearly interpolating
+# between samples. NB: this function will lengthen the duration of the
+# sound by a factor of 1/ratio. With speech input, this typically produces
+# the effect of slurred, drunken speech.
+#
+#   y := lint x ratio ;
+#
+# Inputs:
+#   x     = input signal
+#   ratio = pitch reduction factor, >0 and <= 1
+
+lint IS OP x ratio {
+   N := tally x ;
+   IF ( ratio > 1 ) or ( ratio < 0 ) THEN
+      write 'lint: ratio > 1 or ratio < 0' ;
+      y := x ;
+   ELSE
+      y := 1 + ceiling( N * recip ratio ) take x ;
+      Ni := floor( N - 1 / ratio ) + 1 ;
+      k := reverse tell Ni ;
+      ix := each floor( k * ratio ) ;
+      y#( k + 1 ) := y#( ix + 1 ) + ( ( k * ratio - ix ) * ( y#( ix + 2 ) - y#( ix + 1 ) ) ) ;
+   ENDIF ;
+   y
+}
+
+
+
+# resample a vector of sound samples, changing to a new sample rate
+#
+#   y := resample x newsr oldsr ;
+#
+# Inputs:
+#   x     = input signal vector
+#   newsr = desired sample rate of output
+#   oldsr = sample rate of x in samples per secod
+
+resample IS OP x newsr oldsr {
+   ratio  := oldsr / newsr ;
+   IF ratio > 1 THEN
+      y := deci x ratio ;
+   ELSEIF ratio < 1 THEN
+      y := lint x ratio ;
+   ELSE
+      y := x ;
+   ENDIF ;
+   y
+}
+
+
+
+# CONVOLUTION-BASED REVERBS
+
+
+# Simulates reverberation by convolving an input signal (x) with a
+# recorded impulse response (ir). Both must have the same sample rate;
+# resample if necessary.
+#
+#   y = convrvb x ir ;
+#
+# Inputs:
+#   x   = input signal samples
+#   ir  = impulse response samples
+
+convrvb IS OP x ir {
+   fastconv ir x
+}
+
+
+# Artificial (purely digital) reverb.
+#
+#   y := artrvb x predelay wet IRdur k sr ;
+#
+# Inputs:
+#   x        = input signal
+#   predelay = time in seconds for the arrival of the first reflection
+#   wet      = percentage of wet sound in output (0-100)
+#   IRdur    = duration of the impulse response of the virtual space
+#              in seconds
+#   k        = decay constant (k=8 typical)
+#   sr       = sample rate in samples per second
+
+artrvb IS OP x predelay wet IRdur k sr {
+  xlen := tally x ;
+  x2 := ceiling( predelay * sr ) reshape 0.0 link x ;
+  x2len := tally x2 ;
+  x1 := x link ( ( x2len - xlen ) reshape 0.0 ) ;
+  Hlen := floor ( Irdur * sr ) ;
+  H := Hlen take noise IRdur sr * ( Hlen take expdecay IRdur k sr ) ;
+  coeff := wet / 100.0 ;
+  x2 := coeff * fastconv H x2 ;
+  x1 := 1 - coeff * x1 ;
+  diff := tally x2 - tally x1 ;
+  x1 := x1 link ( diff reshape 0.0 ) ;
+  x1 + x2
+}
+
+
+# Tapped delay line with an arbitrary number of taps. Used by multirvb.
+#
+#   y := tdl x delay gain sr ;
+#
+# Inputs:
+#   x     = input signal
+#   delay = vector of early reflection delays, in seconds
+#   gain  = vector of gains, one for each delay, [0,1]
+#   sr    = sample rate in samples per second
+
+tdl IS OP x delay gain sr {
+   dlen := tally delay ;
+   glen := tally gain ;
+   IF not( dlen = glen ) THEN
+      write 'delay and gain vectors must be of same length' ;
+      y := x ;
+   ELSE
+      xlen := tally x ;
+      delays := floor( delay * sr ) ;
+      dmax := max delays ;
+      y := ( xlen reshape 0.0 ) link ( dmax reshape 0.0 ) ;
+      FOR i WITH tell dlen DO
+         di := delays@i ;
+         xi := xlen + di - 1 ;
+         y#( range di xi ) :=  y#( range di xi ) + ( gain@i * x ) ;
+      ENDFOR ;
+   ENDIF ;
+   normalize y
+}
+
+
+# Artificial reverb that simulates a point source, multiple reflecting
+# surfaces, and a reverb tail.
+#
+#   y := multirvb x delay gain IRdur k sr {
+#
+# Inputs:
+#   x     = input signal (mono vector only)
+#   delay = vector of early reflection delays, in seconds ( <= 0.100 )
+#   gain  = vector of gains, one for each delay, [0,1]
+#   IRdur = duration of the reverb tail, in seconds
+#   k     = decay constant (k=8 typical)
+#   sr    = sample rate in samples per second
+
+multirvb IS OP x delay gain IRdur k sr {
+   dlen := tally delay ;
+   glen := tally gain ;
+   IF not( dlen = glen ) THEN
+      write 'delay and gain vectors must be of same length' ;
+      y := x ;
+   ELSE
+      x1 := tdl x delay gain sr ; 
+      zr := noise IRdur sr ;
+      decay := expdecay IRdur k sr ;
+      zr decay := trim zr decay ;
+      H := zr * decay ;
+      x2 := fastconv H x1 ;
+      diff := tally x2 - tally x1 ;
+      x1 := x1 link ( diff reshape 0.0 ) ;
+      y := x1 + x2 ;
+   ENDIF ;
+   normalize y
+}
+
+
+
+# INSTRUMENT SIMULATION
+
+
+# Implements an FM instrument. The amp argument specifies the amplitudes
+# of a single multi-segment linear envelope, which is applied both to
+# output amplitude and modulation index. The modulating frequency is
+$ obtained by c:m ratio. See FMDemo for a demonstration of the use of
+# fm_instr.
+#
+#   y := fm_instr cf cm mi amp dur sr ;
+#
+# Inputs:
+#   cf  = carrier frequency in Hz.
+#   cm  = c:m ratio
+#   mi  = modulation index
+#   amp = array of ending amplitudes of envelope segments (start is always 0)
+#   dur = array of segment durations in seconds
+#   sr  = sample rate in samples per second
+
+fm_instr IS OP cf cm mi amp dur sr {
+   n := floor( sum ( dur * sr ) ) ; 
+   t := tell n / sr ; 
+   c := 2.0 * pi * cf * t ;
+   mf := cf / cm ;
+   linen := tally t take env amp dur sr ; 
+   m := mi * linen * cos( 2 * pi * mf * t ) ; 
+   normalize ( linen * sin( c + m ) )
+}
+
+
+
+# LESLIE EFFECT
+
+# leslie simulates the effect of a rotary loudspeaker. See leslieDemo for
+# a demonstration of the use of this op.
+#
+#   y := leslie x lfo td vd sr ;
+#
+# Inputs:
+#   x   = mono input signal
+#   lfo = speaker rotation rate in revolutions per second
+#   td  = tremolo depth (0.3 nominal)
+#   vd  = vibrato depth (0.003 nominal) 
+#   sr  = sample rate in samples per second
+
+
+
+# vibrato3cn and vibrato3cp apply vibrato (low-frequency frequency
+# modulation) to the input signal. These functions are required by
+# leslie.
+
+vibrato3cn IS OP x lfo mi sr {
+   Delay := 0.01 ;
+   DELAY := round( Delay * sr ) ;
+   MODFREQ := lfo / sr ;
+   Indices := tell ((tally x) - 1) ;
+   ModVals := mi*opp cos (MODFREQ*2*PI*Indices) ;
+   Ptrs  := 1 + DELAY + (DELAY*ModVals) ;
+   IVals := floor Ptrs ;
+   Fracs := Ptrs - IVals ; 
+   DL2 := 2 + DELAY + ( DELAY * 2 ) ;
+   Delayline := ((DL2 - 1) reshape 0.0) link x ;
+   XV1   := (Indices + DL2 - Ivals - 1) choose DelayLine ;
+   XV2   := (Indices + DL2 - IVals - 2) choose Delayline ;
+   y     := XV2*Fracs + (XV1*(1 - Fracs)) ;
+   floor( 2 * DELAY ) drop y
+}
+
+
+vibrato3cp IS OP x lfo mi sr {
+   Delay := 0.01 ;
+   DELAY := round( Delay * sr ) ;
+   MODFREQ := lfo / sr ;
+   Indices := tell ((tally x) - 1) ;
+   ModVals := mi*cos (MODFREQ*2*PI*Indices) ;
+   Ptrs  := 1 + DELAY + (DELAY*ModVals) ;
+   IVals := floor Ptrs ;
+   Fracs := Ptrs - IVals ; 
+   DL2 := 2 + DELAY + ( DELAY * 2 ) ;
+   Delayline := ((DL2 - 1) reshape 0.0) link x ;
+   XV1   := (Indices + DL2 - Ivals - 1) choose DelayLine ;
+   XV2   := (Indices + DL2 - IVals - 2) choose Delayline ;
+   y     := XV2*Fracs + (XV1*(1 - Fracs)) ;
+   floor( 2 * DELAY ) drop y
+}
+
+
+
+# LESLIE
+
+leslie IS OP x lfo td vd sr {
+   A := vibrato3cn x lfo vd sr ;
+   B := vibrato3cp x lfo vd sr ;
+   n := tally A ;
+   t := tell n / sr ;
+   TA := td * opp sin( 2 * pi * lfo * t ) + 1 ;
+   TB := td * sin( 2 * pi * lfo * t ) + 1 ;
+   left := normalize( TA * A + ( 0.7 * B ) ) ;
+   right := normalize( TB * B + ( 0.7 * A ) ) ;
+   left right
+}
+
+
+
+# TIME-STRETCHING AND PITCH-SHIFTING
+
+
+fftshift is op z {
+   IF not ( _isComplex z ) THEN
+      write 'fftshift: argument must be a complex array' ;
+      v := ??fftshift ;
+   ELSE
+      halflen := floor( first shape z / 2 ) ;
+      v := 0 catenate ( halflen 0 drop z ) ( halflen 2 take z )
+   ENDIF ;
+   v
+}
+
+
+princarg IS OP phase_in {
+   ( amod ( phase_in + pi ) ( -2 * pi ) ) + pi
+}
+
+# This op performs time stretching. If r>1, duration will be
+# increased; if r<1, duration will be reduced. Pitch is unaffected.
+#
+#   y := time_stretch x r ;
+#
+# Inputs:
+#   x = input signal
+#   r = ratio of output duration to input duration
+
+time_stretch IS OP x r {
+   IF r > 1 THEN
+      n2 := 512 ;
+      n1 := round( 512 / r ) ;
+   ELSE
+      n1 := 512 ;
+      n2 := round( 512 * r ) ;
+   ENDIF ;
+   WLen := 2048 ;
+   w1 := hann WLen ;
+   w2 := w1 ;
+   LX := tally x ;
+   x := ( WLen reshape 0.0 ) link x link ( WLen - ( LX mod n1 ) reshape 0.0 ) / max abs x ;
+   tstretch_ratio := n2 / n1 ;
+   y := WLen + ( ceiling( LX * tstretch_ratio ) ) reshape 0.0 ;
+   omega := 2.0 * pi * n1 * ( tell WLen ) / WLen ;
+   phi0 := WLen reshape 0.0 ;
+   psi  := WLen reshape 0.0 ;
+   pin := 0 ;
+   pout:= 0 ;
+   pend := LX - WLen ;
+   WHILE pin < pend DO
+      grain := x#( range ( pin + 1 ) ( pin + WLen ) ) * w1 ;
+      f := _fft_forward fftshift _r2c grain ;
+      r := _cabs f ;
+      phi := each atan2 rows f ;
+      delta_phi := omega + princarg( phi - phi0 - omega ) ;
+      phi0 := phi ;
+      psi := princarg( psi + ( delta_phi * tstretch_ratio ) ) ;
+      ft := ( _r2c r ) _cprod _cexp( _J _cprod _r2c psi ) ;
+      grain := real_part fftshift _fft_backward ft * w2 ;
+      y#( range( pout + 1 ) ( pout + WLen ) ) := y#( range( pout + 1 ) ( pout + WLen ) ) + grain ;
+      pin := pin + n1 ;
+      pout := pout + n2 ;
+   ENDWHILE ;
+   Wlen drop y / max abs y
+}
+
+
+# Performs pitch shifting. If r>1, pitch will be shifted up; if r<1,
+# pitch will be shifted down. Duration is unaffected.
+#
+#   y := pitch_shift x_in r ;
+#
+# Inputs:
+#   x_in = input vector
+#   r    = ratio of output pitch to input pitch
+
+pitch_shift IS OP x_in r {
+   IF r > 1 THEN
+      n2 := 512 ;
+      n1 := round( 512 / r ) ;
+   ELSE
+      n1 := 512 ;
+      n2 := round( 512 * r ) ;
+   ENDIF ;
+   tstretch_ratio := n2 / n1 ;
+   WLen := 2048 ;
+   w1 := hann WLen ;
+   w2 := w1 ;
+   Lenx := tally x_in ;
+   x_in := ( WLen reshape 0.0 ) link x_in link ( WLen - ( Lenx mod n1 ) reshape 0.0 ) / max abs x_in ;
+   lx := floor( WLen * n1 / n2 ) ;
+   x := ( tell lx ) * WLen / lx + 1;
+   ix := floor x ;
+   ix1 := ix + 1 ;
+   dx := x - ix ;
+   dx1 := 1 - dx ;
+   y := lx + tally x_in reshape 0.0 ;
+   omega := 2 * pi * n1 * ( tell WLen ) / WLen ;
+   phi0 := WLen reshape 0.0 ;
+   psi := WLen reshape 0.0 ;
+   pin := 0 ;
+   pout := 0 ;
+   pend := tally x_in - WLen ;
+   WHILE pin < pend DO
+      grain := x_in#( range ( pin + 1 ) (  pin + WLen ) ) * w1 ;
+      f := _fft_forward fftshift _r2c grain ;
+      r := _cabs f ;
+      phi := each atan2 rows f ;
+      delta_phi := omega + princarg( phi - phi0 - omega ) ;
+      phi0 := phi ;
+      psi := princarg( psi + ( delta_phi * tstretch_ratio ) ) ;
+      ft := ( _r2c r ) _cprod _cexp( _J _cprod _r2c psi ) ;
+      grain := real_part fftshift _fft_backward ft * w2 ;
+      grain2 := grain link 0.0 ;
+      grain3 := ( ( grain2#( ix - 1 ) ) * dx1 ) + ( ( grain2#( ix1 - 1 ) ) * dx ) ;
+      y#( range ( pout + 1 ) ( pout + lx ) ) := y#( range ( pout + 1 ) ( pout + lx ) ) + grain3 ;
+      pin := pin + n1 ;
+      pout:= pout + n1 ;
+   ENDWHILE ;
+   y#( range ( WLen + 1 ) ( WLen + Lenx ) ) / max abs y 
+}
+
+
+
+# LIMITING AND COMPRESSION
+
+# Limiter.
+#
+#   y := limiter x threshold at rt sr ;
+#
+# Inputs:
+#   x         = signal to be limited
+#   threshold = limit threshold in dBFS
+#   at        = attack time in seconds
+#   rt        = release time in seconds
+#   sr        = sample rate in samples per second
+
+limiter IS OP x threshold at rt sr {
+   T := recip sr ;
+   lt := dbfs2abs threshold ;
+   at := 1 - exp( -2.2 * T / at ) ;
+   rt := 1 - exp( -2.2 * T / rt ) ;
+   delay := 5 ;
+   xpeak := 0.0 ;
+   g := 1 ;
+   buffer := delay + 1 reshape 0.0 ;
+   y := tally x reshape 0.0 ;
+   head := 0 ;
+   tail := delay ;
+   FOR n WITH tell tally x DO
+      a := abs x@n ;
+      IF a > xpeak THEN
+         coeff := at ;
+      ELSE
+         coeff := rt ;
+      ENDIF ;
+      xpeak := ( 1.0 - coeff ) * xpeak + ( coeff * a ) ;
+      f := min  [ 1 , lt / xpeak ] ;
+      IF f < g THEN
+         coeff := at ;
+      ELSE
+         coeff := rt ;
+      ENDIF ;
+      g := ( 1.0 - coeff ) * g + ( coeff * f ) ;
+      y@n := g * buffer@tail ;
+      buffer@head := x@n ;
+      tail := tail - 1 ;
+      IF tail = -1 THEN
+         tail := delay ;
+      ENDIF ;
+      head := head - 1 ;
+      IF head = -1 THEN
+         head := delay ;
+      ENDIF ;
+   ENDFOR ;
+   normalize ( delay drop y )
+}
+
+
+# Compressor 
+#
+# y := compress x CT CS tav at rt sr ;
+#
+# Inputs:
+#   x   = signal to be compressed
+#   CT  = compression threshold in dB
+#   CS  = compression slope, 0<CS<1 ( 1 - 1/Ratio )
+#   tav = rms averaging time (0.005-0.130 sec.)
+#   at  = smoothing filter attack time (0.001-2.6 sec.)
+#   rt  = smoothing filter release time (0.001-5.0 sec.)
+#   sr  = sample rate in samples per second
+
+compress IS OP x CT CS tav at rt sr {
+   T := recip sr ;
+   tav := 1.0 - exp( -2.2 * T / tav ) ;
+   at  := 1.0 - exp( -2.2 * T / at ) ;
+   rt  := 1.0 - exp( -2.2 * T / rt ) ;
+   delay := 150 ;
+   xrms := 0.0 ;
+   g := 1.0 ;
+   buffer := delay + 1 reshape 0.0 ;
+   y := tally x reshape 0.0 ;
+   head := 0 ;
+   tail := delay ;
+   for n WITH tell tally x DO
+      xrms := ( 1.0 - tav ) * xrms + ( tav * ( x@n power 2 ) ) ;
+      XX := 10.0 * log xrms ;
+      GG := min [ 0 , CS * ( CT - XX ) ] ;
+      f := 10.0 power ( GG / 20.0 ) ;
+      IF f < g THEN
+         coeff := at ;
+      ELSE
+         coeff := rt ;
+      ENDIF ;
+      g := ( ( 1.0 - coeff ) * g ) + ( coeff * f ) ;
+      y@n := g * buffer@tail ;
+      buffer@head := x@n ;
+      tail := tail - 1 ;
+      IF tail = -1 THEN
+         tail := delay ;
+      ENDIF ;
+      head := head - 1 ;
+      IF head = -1 THEN
+         head := delay ;
+      ENDIF ;
+   ENDFOR ;
+   normalize y 
+}
+
+
+
+# FFT and IFFT
+#
+#  Fast Fourier Transform of real or complex array
+
+fft IS OP x {
+   IF not ( _isComplex x ) THEN
+      x := _r2c x ;
+   ENDIF ;
+   _fft_forward x
+}
+
+
+# Inverse Fourier Transform of complex array
+
+ifft IS OP z {
+   IF not ( _isComplex z ) THEN
+      write 'ifft: argument must be a complex array' ;
+      v := ??ifft ;
+   ELSE
+      v := _fft_backward z ;
+   ENDIF ;
+   v
+}
+
+
+
+# SINC FILTERS
+
+sinc IS OP x { 
+   i := x match 0.0 sublist grid x ;
+   ni := not ( x match 0.0 ) sublist grid x ;
+   y := tally x reshape 0.0 ;
+   y#ni := sin( pi * x#ni ) / ( pi * x#ni ) ;
+   y#i := 1.0 ;
+   y
+}
+
+
+sincfilter IS OP fc b sr {
+   fc := fc / sr ;
+   b := b / sr ;
+   N := ceiling( 4.0 / b ) ;
+   IF N mod 2 = 0 THEN
+      N := N + 1 ;
+   ENDIF ;
+   nn := tell N ;
+   h := sinc( 2.0 * fc * ( nn - ( ( N - 1 ) / 2.0 ) ) ) ;
+   w := blackman N ;
+   h := h * w ;
+   h / sum h
+}
+
+
+sinc_lowpass IS OP x fc b sr {
+   H := sincfilter fc b sr ;
+   fastconv H x
+}
+
+
+sinc_highpass IS OP x fc b sr {
+   H := sincfilter fc b sr ;
+   Hh := unit tally H - H ;
+   fastconv Hh x
+}
+
+
+sinc_bandpass IS OP x fcl fch b sr {
+   Hl := sincfilter fcl b sr ;
+   Hh := sincfilter fch b sr ;
+   H := Hh - Hl ;
+   fastconv H x
+}
+
+
+sinc_bandstop IS OP x fcl fch b sr {
+   Hl := sincfilter fcl b sr ;
+   H := sincfilter fch b sr ;
+   Hh := unit tally H - H ;
+   Hs := Hh + Hl ;
+   fastconv Hs x
+}
+
+
+# envelope follower
+#
+#   y = rms x sr ;
+#
+# This function returns a vector of samples that follows the general
+# amplitude contour, or "envelope", of the input.
+#
+# Input:
+#   x  = vector of samples
+#   sr = sample rate in samples per second
+#
+# Output:
+#   y  = output vector representing the amplitude envelope of x
+
+rms IS OP x sr {
+   WindowLength  := 2 power ceiling( lg( 0.02 * sr ) ) ;
+   hop           := fix( WindowLength / 4 ) ;
+   w             := hann WindowLength ;
+   normW         := sqrt sum( w * w ) ;
+   pft           := 1 ;
+   y             := tally x reshape 0.0 ;
+   pin  := 0 ;
+   pend := tally x - WindowLength ;
+   WHILE pin < pend DO
+      grain := x#( range ( pin + 1 ) ( pin + WindowLength ) ) *  w ;
+      y@pft := sqrt sum( grain * grain ) / normW ;
+      pft   := pft + hop ;
+      pin   := pin + hop ;
+   ENDWHILE ;
+   ix := not( y match 0.0 ) sublist grid y ;   
+   FOR i WITH tell ( tally ix - 1 ) DO
+       yi := y@( ix@i ) ;
+       delta := y@(ix@(i+1)) - y@(ix@i) / hop ;
+       k := 0 ;
+       FOR j WITH range ( ix@i + 1 ) ( ix@( i + 1 ) - 1 ) DO
+           y@j := y@( ix@i ) + ( k * delta ) ;
+           k := k + 1 ;
+       ENDFOR ;
+   ENDFOR ;
+   max abs x * y / max abs y
+}
+
+
+noisegate IS OP x holdtime ltrhold utrhold release attack sr {
+   rel := round( release * sr ) ; 
+   att := round( attack * sr ) ;
+   g := tally x reshape 0.0 ;
+   lthcnt := 0 ;
+   uthcnt := 0 ;
+   ht := round( holdtime * sr ) ;
+   h := rms x sr ;
+   h := h / max h ; 
+   FOR i WITH tell tally h DO
+      IF ( h@i <= ltrhold ) or ( ( h@i < utrhold ) and ( lthcnt > 0 ) ) THEN
+         lthcnt := lthcnt + 1 ;		
+         uthcnt := 0 ;
+         IF lthcnt > ht THEN			
+            IF lthcnt > ( rel + ht ) THEN 
+               g@i := 0.0 ;
+            ELSE
+	       g@i := 1.0 - ( ( lthcnt - ht ) / rel ) ;
+            ENDIF ;
+         ELSEIF ( ( i < ht ) and ( lthcnt = i ) ) THEN
+            g@i := 0.0 ;
+         ELSE
+            g@i := 1.0 ;
+         ENDIF ;
+      ELSEIF ( h@i >= utrhold ) or ( ( h@i > ltrhold ) and ( uthcnt > 0 ) ) THEN	 
+         uthcnt := uthcnt + 1 ;
+         IF ( g@( i - 1 ) < 1 ) THEN				
+            g@i := max [ uthcnt / att , g@( i - 1 ) ] ;
+         ELSE
+           g@i := 1 ;
+         ENDIF ;
+         lthcnt := 0 ;
+      ELSE
+         g@i := g@( i - 1 ) ;
+         lthcnt := 0 ;
+         uthcnt := 0 ;
+      ENDIF ;
+   ENDFOR ;
+   x * g
+}
+
+
+
+# Pink (1/f) noise source
+#
+#   y := pinknoise dur sr ;
+#
+# Inputs:
+#   dur = duration in seconds
+#   sr  = sample rate in samples per second
+
+pinknoise IS OP dur sr {
+   N := floor( dur * sr ) ;
+   IF N mod 2 = 1 THEN 
+      M := N + 1 ;
+   ELSE
+      M := N ;
+   ENDIF ;
+   x := noise dur sr ;
+   FX := fft x ;
+   NumUniquePts := floor( M / 2 ) + 1 ;
+   n := tell NumUniquePts ;
+   FX|[n,] := FX|[n,] _cdiv _r2c sqrt( n + 1 ) ;
+   lhalf := NumUniquePts 2 take FX ;
+   rhalf := _cconj( bycols reverse( 1 0 drop( 1 0 dropright lhalf ) ) ) ;   
+   FX := 0 catenate lhalf rhalf ;
+   y := ifft FX ;
+   y := real_part y ;
+   y := y - mean y ;
+   yrms := sqrt mean ( y power 2 ) ;
+   normalize( y / yrms )
+}
+
+# X/Y panpot. Allows sound to be panned left or right as well as nearer
+# or farther away. Panning type may be linear or traditional sin/cos. The
+# stereo panorama is assumed to be 60 degrees wide.
+#
+#   y := superpan x ir type theta1 theta2 mix1 mix2 sr ;
+#
+# Inputs:
+#   x      = input signal to be panned (mono vector)
+#   ir     = impulse response of the space in which the sound is to be
+#            heard (mono vector)
+#   type   = "lin = linear, "sin = sin/cos
+#   theta1 = azimuth at start of sound (up to +/- 30 degrees)
+#   theta2 = azimuth at end of sound (up to +/- 30 degrees)
+#   mix1   = percentage of wet sound at beginning of sound (0-100)
+#   mix2   = percentage of wet sound at end of sound (0-100)
+#   sr     = sample rate in samples per second
+#
+# Output
+#   left/right vectors of samples
+
+
+# Linear stereophonic panning. This function assumes the stereo field
+# is 60 degrees wide. The apparent direction of the sound source can be
+# moved through any angle between -30 (all the way left) to +30 (all the
+# way right).
+#
+#   left right := linpan x start finish ;
+#
+# Inputs:
+#   x      = input sound vector
+#   start  = initial azimuth of source relative to listener, in degrees
+#   finish = final azimuth of source relative to listener, in degrees
+#
+# Output:
+#   left/right vectors of samples
+
+linpan IS OP x start finish {
+   n     := tally x ;     
+   imix  := linspace ( ( start + 30 ) / 60 )  ( ( finish + 30 ) / 60 )  n ;
+   mix   := 1 - imix ;
+   left  := mix * x ;
+   right := imix * x ;
+   left right
+}
+
+
+# Traditional sin/cos stereophonic panning. This function assumes the
+# stereo field is 60 degrees wide. The apparent direction of the sound
+# source can be moved through any angle between -30 (all the way left) to
+# +30 (all the way right).
+#
+#   left right := sinpan x start finish ;
+#
+# Inputs:
+#   x      = input sound vector
+#   start  = initial azimuth of source relative to listener, in degrees
+#   finish = final azimuth of source relative to listener, in degrees
+#
+# Output:
+#   left/right vectors of samples
+
+sinpan IS OP x start finish { 
+   n      := tally x ;
+   lsbase := 30 ;
+   coeff  := 180 / ( 2 * lsbase ) ;
+   start  := coeff * ( start + lsbase ) / 360 ;
+   finish := coeff * ( finish + lsbase ) / 360 ;
+   left   := ( cos( 2 * pi * linspace start finish n ) + 1 ) / 2 * x ;
+   right  := ( sin( 2 * pi * linspace start finish n ) + 1 ) / 2 * x ;
+   left right
+}
+
+
+# Combines "wet" sound with the unreverberated original sound. The mix
+# can be varied from 0 (nearest) to 100 (farthest) over the duration of
+# the sound.
+#
+#   left right := finalmix left right rvb start finish ;
+#
+# Inputs:
+#   left   = left channel samples
+#   right  = right channel samples
+#   rvb    = wet signal samples
+#   start  = percentage of wet signal in the mix at beginning of sound (0-100)
+#   finish = percentage of wet signal in the mix at end of sound (0-100)
+#
+# Output:
+#   left/right vectors of samples
+
+finalmix IS OP left right rvb start finish {
+  n := tally rvb ;
+  diff  := n - tally left ;     
+  left  := left link ( diff reshape 0.0 ) ;
+  right := right link ( diff reshape 0.0 ) ;
+  mix := linspace ( start / 100 ) ( finish / 100 ) n ;
+  imix := 1 - mix ;
+  mixrvb := mix * rvb ;
+  left := mixrvb + ( imix * left ) ;
+  right := mixrvb + ( imix * right ) ;
+  left right
+}
+
+
+superpan IS OP x ir type theta1 theta2 mix1 mix2 sr {
+   r := convrvb x ir ;
+   CASE type FROM
+      "lin : left right := linpan x theta1 theta2 ; END
+      "sin : left right := sinpan x theta1 theta2 ; END      
+   ELSE 'illegal panning type' ;
+   ENDCASE ;
+   finalmix left right r mix1 mix2 
+}
+
+
+# Applies a continuous "wah-wah" effect to the input signal.
+#
+#   y := wahwah x wr fs ff d sr ;
+#
+# Inputs:
+#   x  = input signal
+#   wr = wahwah frequency in Hz (1-3 Hz typical)
+#   fs = center frequency of the filter in Hz at start and end of wah (100
+#        Hz typical)
+#   ff = center frequency of the filter in Hz at middle of wah (1500 Hz
+#        typical)
+#   d  = half-bandwidth of the filter in Hz. (100 Hz typical)
+#   sr = sample rate in samples per second
+#
+# Output:
+#   vector of samples
+
+wahwah IS OP x wr fs ff d sr {
+   n := tally x ;
+   dur := n / sr ;
+   Fc := ( tri wr dur sr ) + 1.0 / 2.0 ;
+   Fc x := trim Fc x ;
+   F := fs + ( ff * Fc ) ;
+   I2 := 2.0 * exp( -2.0 * pi * d / sr ) * cos( 2.0 * pi * F / sr ) ;
+   I3 := exp( -4.0 * pi * d / sr ) ;
+   y := n reshape 0.0 ;
+   prev1 := 0.0 ;
+   prev2 := 0.0 ;
+   FOR i WITH tell n DO
+     y@i := x@i + ( I2@i * prev1 ) - ( I3 * prev2 ) ;
+     prev2 := prev1 ;
+     prev1 := y@i ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# State variable notch filter with narrow reject band. The center
+# frequency oscillates up and down the spectrum, producing a continuous
+# phasing effect.
+#
+#   y := phaser x damp minf maxf fw sr ;
+# 
+# Inputs:
+#   x    = input signal
+#   damp = damping factor (typically 0.1-0.3); the smaller the damping
+#          factor the greater the phasing effect.
+#   minf = minimum center cutoff frequency (typically 200 Hz)
+#   maxf = maximum center cutoff frequency (typically 1000 Hz)
+#   fw   = phasing center frequency (typically 1-3 Hz)
+#   sr   = sample rate in samples per second
+#
+# Output:
+#   vector of samples
+
+phaser IS OP x damp minf maxf fw sr {
+   tx := tally x ;
+   dur := tx / sr ;
+   Fc := ( ( tri fw dur sr ) + 1 / 2 ) * ( maxf - minf ) + minf ;
+   Fc x := trim Fc x ;
+   F1 := 2.0 * sin( ( pi * Fc@0 ) / sr ) ;
+   Q1 := 2.0 * damp ;
+   yh := tx reshape 0.0 ;
+   yb := tx reshape 0.0 ;
+   yl := tx reshape 0.0 ;
+   yh@0 := x@0 ;
+   yb@0 := F1 * yh@0 ;
+   yl@0 := F1 * yb@0 ;
+   FOR n WITH count( tally x - 1 ) DO
+      yh@n := x@n - yl@(n - 1) - ( Q1 * yb@(n - 1) ) ;
+      yb@n := F1 * yh@n + yb@(n - 1) ;
+      yl@n := F1 * yb@n + yl@(n - 1) ;  
+      F1 := 2.0 * sin( ( pi * Fc@n ) / sr ) ;
+   ENDFOR ;
+   normalize ( yh - yl )
+}
+
+
+#   y := lowshelving x Fc G sr ;
+#
+# Applies a low-frequency shelving filter to the input signal.
+#
+# Inputs:
+#   x  = input vector
+#   Fc = cut-off frequency in Hz
+#   G  = gain in dB (G >= 0 is boost, G < 0 is cut)
+#   sr = sample rate in samples per second
+#
+# Output:
+#   vector of samples
+
+lowshelving IS OP x Fc G sr {
+   Wc := Fc / ( sr / 2.0 ) ;
+   V0 := 10.0 power ( G / 20.0 ) ;
+   H0 := V0 - 1.0 ;
+   IF G >= 0.0 THEN
+      c := ( tan( pi * Wc / 2.0 ) - 1.0 ) / ( tan( pi * Wc / 2.0 ) + 1 ) ;
+   ELSE
+      c := ( tan( pi * Wc / 2.0 ) - V0 ) / ( tan( pi * Wc / 2.0 ) + V0 ) ;
+   ENDIF ;
+   xh := 0.0 ;
+   y := tally x reshape 0.0 ;
+   FOR n WITH tell tally x DO
+      xh_new := x@n - ( c * xh ) ;
+      ap_y := c * xh_new + xh ;
+      xh := xh_new ;
+      y@n := 0.5 * H0 * ( x@n + ap_y ) + x@n ;
+   ENDFOR ;
+   normalize y
+}
+
+
+#   y := highshelving x Fc G sr ;
+#
+# Applies a high-frequency shelving filter to the input signal.
+#
+# Inputs:
+#   x  = input vector
+#   Fc = cut-off frequency in Hz
+#   G  = gain in dB (G >= 0 is boost, G < 0 is cut)
+#   sr = sample rate in samples per second
+#
+# Output:
+#   vector of samples
+
+highshelving IS OP x Fc G sr {
+   Wc := Fc / ( sr / 2.0 ) ;
+   V0 := 10.0 power ( G / 20.0 ) ;
+   H0 := V0 - 1.0 ;
+   IF G >= 0.0 THEN
+      c := ( tan( pi * Wc / 2.0 ) - 1.0 ) / ( tan( pi * Wc / 2.0 ) + 1.0 ) ;
+   ELSE
+      c := ( tan( pi * Wc / 2 ) - 1 ) / ( tan( pi * Wc / 2 ) + 1 ) ;
+   ENDIF ;
+   xh := 0.0 ;
+   y := tally x reshape 0.0 ;
+   FOR n WITH tell tally x DO
+      xh_new := x@n - ( c * xh ) ;
+      ap_y := c * xh_new + xh ;
+      xh := xh_new ;
+      y@n := 0.5 * H0 * ( x@n - ap_y ) + x@n ;
+   ENDFOR ;
+   normalize y
+}
+
+
+# "Denoises" a signal
+#
+#   y := denoise x ;
+#
+# Input:
+#   x = input signal
+#
+# Output:
+#   vector of samples
+
+denoise IS OP x {
+   n1   := 512 ;
+   n2   := n1 ;
+   WLen := 2048 ;
+   w1   := hann WLen ;
+   w2   := w1 ;
+   LX := tally x ;
+   x := ( WLen reshape 0.0 ) link x link ( WLen - ( LX mod n1 ) reshape 0.0 ) / max abs x ;
+   WLen2 := WLen / 2 ;
+   coef  := 0.01 ;
+   y     := tally x reshape 0.0 ;
+   pin  := 0 ;
+   pout := 0 ;
+   pend := tally x - WLen ;
+   WHILE pin < pend DO
+      grain := x#( range ( pin + 1 ) ( pin + WLen ) ) * w1 ;
+      f     := fft( grain ) ;
+      r     := _cabs f / WLen2 ;
+      ft    := ( f _cprod _r2c r ) _cdiv ( _r2c ( r + coef ) ) ;
+      grain := real_part ( ( ifft ft ) _cprod ( _r2c w2 ) ) ;
+      y#( range ( pout + 1 ) ( pout + WLen ) ) := y#( range ( pout + 1 ) ( pout + WLen ) ) + grain ;
+      pin  := pin + n1 ;
+      pout := pout + n2 ;
+   ENDWHILE ;
+   normalize ( y#( range ( WLen + 1 ) ( WLen + LX ) ) )
+}
+
+
+# Second-order parametric EQ filter design. Computes the b and a
+# coefficients to be passed to the _dspfilter function. This
+# function is intended to be used as a stage in a parametric EQ.
+#
+#   b a := parmeq dB cf bw sr ;
+#
+# Inputs:
+#   dB = boost/cut (decibels)
+#   cf = center frequency in Hz.
+#   bw = bandwidth in Hz.
+#   sr = sample rate in samples per second
+#
+# Outputs:
+#   b = numerator coefficients
+#   a = denominator coefficientsTHEN
+
+parmeq IS OP dB cf bw sr {
+   G0 := 1.0 ;
+   GB := recip sqrt 2.0 ;
+   G  := 10.0 power ( dB / 20.0 ) ;
+   w0 := 2.0 * pi * cf / sr ;
+   Dw := 2.0 * pi * bw / sr ;
+   beta := tan( Dw / 2.0 ) * sqrt( abs( ( GB power 2.0 ) - ( G0 power 2.0 ) ) ) / sqrt( abs( ( G power 2.0 ) - ( GB power 2.0 ) ) ) ;
+   b := ( G0 + ( G * beta ) ) link ( -2.0 * G0 * cos w0 ) link ( G0 - ( G * beta ) ) / (1.0 + beta ) ;
+   a := 1.0 link ( -2.0 * cos w0 / ( 1.0 + beta ) ) link ( 1.0 - beta ) / ( 1.0 + beta ) ;
+   b a
+}
+
+
+# Derive coefficients for a shelving filter with a given amplitude and
+# cutoff frequency. See ShelvingDemo for examples of the use of shelving.
+#
+#   b a := shelving type g fc Q sr ;
+#
+# Inputs:
+#   type = filter type. Choices are: "Bass_Shelf or "Treble_Shelf
+#   g    = the logarithmic gain in dB; positive for boost, negative for cut
+#   fc   = the center frequency
+#   Q    = adjusts the slope of shelving
+#   sr   = sample rate in samples per second
+#
+# Outputs:
+#  b a   = filter coefficients to be used with _dspfilter()
+
+shelving IS OP type g fc Q sr {
+   IF ( type ~= "Bass_Shelf ) and ( type ~= "Treble_Shelf ) THEN
+      write 'shelving: unsupported filter type' ;
+   ENDIF ;
+   K := tan( ( pi * fc ) / sr ) ;
+   V0 := 10.0 power( g / 20.0 ) ;
+   root2 := recip Q ;
+   IF V0 < 1 THEN
+      V0 := recip V0 ;
+   ENDIF ;
+   IF ( g > 0 ) and ( type = "Bass_Shelf ) THEN
+      b0 := ( 1.0 + ( sqrt V0 * root2 * K ) + ( V0 * ( K power 2.0 ) ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      b1 :=                     ( 2.0 * ( V0 * ( K power 2.0 ) - 1.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      b2 := ( 1.0 - ( sqrt V0 * root2 * K ) + ( V0 * ( K power 2.0 ) ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      a1 :=                              ( 2.0 * ( K power 2.0 - 1.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      a2 :=                    ( 1.0 - ( root2 * K ) + ( K power 2.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+   ELSEIF ( g < 0 ) and ( type = "Bass_Shelf ) THEN   
+      b0 :=                  ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) / ( 1.0 + ( root2 * sqrt V0 * K ) + ( V0 * ( K power 2.0 ) ) );
+      b1 :=                            ( 2.0 * ( K power 2.0 - 1.0 ) ) / ( 1.0 + ( root2 * sqrt V0 * K ) + ( V0 * ( K power 2.0 ) ) ) ;
+      b2 :=                  ( 1.0 - ( root2 * K ) + ( K power 2.0 ) ) / ( 1.0 + ( root2 * sqrt V0 * K ) + ( V0 * ( K power 2.0 ) ) ) ;
+      a1 :=                   ( 2.0 * ( V0 * ( K power 2.0 ) - 1.0 ) ) / ( 1.0 + ( root2 * sqrt V0 * K ) + ( V0 * ( K power 2.0 ) ) ) ;
+      a2 := ( 1.0 - ( root2 * sqrt V0 * K ) + ( V0 * ( K power 2 ) ) ) / ( 1.0 + ( root2 * sqrt V0 * K ) + ( V0 * ( K power 2.0 ) ) ) ;
+   ELSEIF ( g > 0 ) and ( type = "Treble_Shelf ) THEN
+      b0 := ( V0 + ( root2 * sqrt V0 * K ) + ( K power 2.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      b1 :=                 ( 2.0 * ( ( K power 2.0 ) - V0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      b2 := ( V0 - ( root2 * sqrt V0 * K ) + ( K power 2.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      a1 :=                  ( 2.0 * ( ( K power 2 ) - 1.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+      a2 :=          ( 1.0 - ( root2 * K ) + ( K power 2.0 ) ) / ( 1.0 + ( root2 * K ) + ( K power 2.0 ) ) ;
+   ELSEIF ( g < 0 ) and ( type = "Treble_Shelf ) THEN
+      b0 :=                    ( 1.0  + ( root2 * K ) + ( K power 2.0 ) ) / ( V0 + ( root2 * sqrt V0 * K ) + ( K power 2.0 ) ) ;
+      b1 :=                               ( 2.0 * ( K power 2.0 - 1.0 ) ) / ( V0 + ( root2 * sqrt V0 * K ) + ( K power 2.0 ) ) ;
+      b2 :=                     ( 1.0 - ( root2 * K ) + ( K power 2.0 ) ) / ( V0 + ( root2 * sqrt V0 * K ) + ( K power 2.0 ) ) ;
+      a1 :=                      ( 2.0 * ( ( K power 2.0 ) / V0 - 1.0 ) ) / ( 1.0 + ( root2 / sqrt V0 * K ) + ( ( K power 2.0 ) / V0 ) ) ;
+      a2 := ( 1.0  - ( root2 / sqrt V0 * K ) + ( ( K power 2.0 ) / V0 ) ) / ( 1.0 + ( root2 / sqrt V0 * K ) + ( ( K power 2.0 ) / V0 ) ) ;
+   ELSE
+      b0 := V0 ;
+      b1 := 0.0 ;
+      b2 := 0.0 ;
+      a1 := 0.0 ;
+      a2 := 0.0 ;
+   ENDIF ;
+   a := [ 1.0 , a1 , a2 ] ;
+   b := [ b0 , b1 , b2 ] ;
+   b a
+}
+
+
+# Parametric equalizer. This function allows the user to adjust the gain
+# of 10 pre-set frequency bands. The center frequencies of the bands are
+# 31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, and 16000 Hz. If the
+# input sample rate is not 44.1 kHz, peq will resample the input.
+#
+#   y := peq x G sr ;
+#
+# Inputs:
+#   x  = vector of sound samples
+#   G  = 10-element vector of boost/cut values in dB
+#   sr = sample rate in samples per second
+#
+# Output:
+#   y  = equalized vector, sampled at 44.1 kHz
+
+peq IS OP x G sr {
+   IF tally G ~= 10 THEN
+      write 'peq: Gain vector must contain 10 values' ;
+   ENDIF ;
+   IF sr ~= 44100 THEN                                                     
+      x := resample x 44100 sr ;
+      sr := 44100 ;
+   ENDIF ;
+   y := x ;
+   cf := [ 31.5 , 63 , 125 , 250 , 500 , 1000 , 2000 , 4000 , 8000 , 16000 ] ;  
+   r := sqrt 2 / 2 ;
+   bw := r * cf ;   
+   Q := 1 ;
+   IF G@0 ~= 0 THEN
+      b a := shelving "Bass_Shelf G@0 cf@0 Q sr ;
+      y := _dspfilter a b y ;
+   ENDIF ;
+   FOR i WITH range 1 8 DO
+      IF G@i ~= 0 THEN
+         b a := parmeq G@i cf@i bw@i sr ;
+         y := _dspfilter a b y ;
+      ENDIF ;
+   ENDFOR ;
+   IF G@9 ~= 0 THEN
+      b a := shelving "Treble_Shelf G@9 cf@9 Q sr ;
+      y := _dspfilter a b y ;
+   ENDIF ;
+   normalize y
+}
+

@@ -1,0 +1,25 @@
+loaddefs "sound_new
+
+write 'This demo illustrates the use of four of the delay line-based effects.' ;
+write ' ' ;
+
+nch n sr sam := wavread makefilepath 'wav' 'Toms_diner.wav' ;
+
+write 'original dry sound' ;
+play sam sr ;
+
+write 'allpdelay' ;
+y := allpdelay sam 0.1 0.5 sr ;
+play y sr ;
+
+write 'firdelay' ;
+y := firdelay sam 0.1 0.5 sr ;
+play y sr ;
+
+write 'iirdelay' ;
+y := iirdelay sam 0.1 0.5 sr ;
+play y sr ;
+
+write 'classic schroeder delay-line reverb' ;
+y := schroeder sam [ 0.0497 , 0.0674 , 0.0738 , 0.0750 ] 0.02 0.5 0.8 sr ;
+play y sr ;

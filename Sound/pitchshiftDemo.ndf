@@ -1,0 +1,18 @@
+loaddefs "sound_new
+
+nch n sr x := wavread makefilepath 'wav' 'voix.wav' ;
+
+write 'Demonstration of pitch-shifting without affecting duration'
+
+write 'Play the unmodified voice clip' ;
+play x sr ;
+
+
+write 'Play clip at 1.5x normal pitch' ;
+z := pitch_shift x 1.5 ;
+play z sr ;
+sleep 1 ;
+
+write 'Play clip at 0.5x normal pitch' ;
+z := pitch_shift x 0.5 ;
+play z sr ;

@@ -1,0 +1,19 @@
+loaddefs "sound_new
+
+write 'Play unprocessed music' ;
+
+nch n sr x := wavread makefilepath 'wav' 'moore_guitar.wav' ;
+
+play x sr ;
+
+write 'Apply continuous wahwah' ;
+
+z := wahwah x 2 100 1500 100 sr ;
+
+play z sr ;
+
+write 'Apply phaser' ;
+
+z := phaser x 0.1 200 1000 2 sr ;
+
+play z sr ;

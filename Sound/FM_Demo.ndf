@@ -1,0 +1,47 @@
+# FM INSTRUMENT SIMULATIONS
+
+loaddefs "sound_new
+
+sr := 22050 ;
+
+# Bell
+
+write 'bell' ;
+y := fm_instr 200 0.7143 10 (1 0.5 0.25 0.125 0.06) (0.01 3 3 3 3) sr ;
+play_mono y sr ;
+
+
+# Wood drum
+
+write 'wood drum' ;
+y := fm_instr 200 0.7143 2 (1 0.01 0) (0.001 0.025 0.2) sr ;
+y := normalize y ;
+y := y link y link y link y ;
+play_mono y sr ;
+sleep 2 ;
+
+
+# Bassoon
+
+write 'bassoon' ;
+y := fm_instr 500 5 1.5  (0.25 0.5 1 1 0.33 0.16 0) (0.033 0.033 0.033 0.5 0.02 0.02 0.02) sr ;
+y := normalize y ;
+play_mono y sr ;
+sleep 2 ;
+
+
+# Clarinet
+
+write 'clarinet' ;
+y := fm_instr 900 1.5 4 (0.25 0.5 1 1 0.33 0.16 0) (0.033 0.033 0.033 0.5 0.02 0.02 0.02) sr ;
+y := normalize y ;
+play_mono y sr ;
+sleep 2;
+
+
+# Brass
+
+write 'brass' ;
+y := fm_instr 440 1 5 (1 0.75 0.7 0) (0.1 0.1 0.3 0.1) sr;
+y := normalize y;
+play_mono y sr ;
