@@ -8,3 +8,16 @@ The Nial code is a single file *ntk.ndf* which creates the Tcl/Tk process, sends
 Current development has been between Nial and ActiveState's open source version **ActiveTcl**. This system includes a production standard GUI Builder **GUIB**. It is possible to build a complex interface using GUIB and have that interact with Nial over the standard input and socket connection.
 
 There are two very simple examples/tests *ntk_test4.ndf*, a simple conversion of feet to metres, and *ntk_test5.ndf* which is a simple line drawing canvas example.
+
+The Tcl process can send back 4 types of messages
+
+1. A command to execute as a list of strings
+2. An information message to note
+3. A response to a previous message sent by Nial
+4. An asynchronous event as a list of strings
+
+Commands and events are processed by taking the first string and treating it as the name of a function to call and passing the rest of the string list as the argument.
+
+Information messages are at the moment written to the Nial standard output.
+
+Responses 
