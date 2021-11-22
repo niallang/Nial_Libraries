@@ -20,5 +20,5 @@ Commands and events are processed by taking the first string and treating it as 
 
 Information messages are at the moment written to the Nial standard output.
 
-Responses are appended to the global list *_tcpResponses* for post processing (not currently implemented).
+Responses are appended to the global list *_tcpResponses* for post processing (not currently implemented). At the moment the connection is viewed as a purely asyncronous process.
 
