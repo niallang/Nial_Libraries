@@ -16,7 +16,7 @@ The Tcl process can send back 4 types of messages
 3. A response to a previous message sent by Nial
 4. An asynchronous event as a list of strings
 
-Commands and events are processed by taking the first string and treating it as the name of a function to call and passing the rest of the string list as the argument.
+Commands and events are processed by taking the first string and treating it as the name of a function in the Nial program to call passing the rest of the string list as the arguments to that function.
 
 Information messages are at the moment written to the Nial standard output.
 
