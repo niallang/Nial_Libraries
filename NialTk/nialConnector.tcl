@@ -31,6 +31,13 @@ proc sendNial msg {
 }
     
 
+proc nialCommand args {
+    set msg "c"
+    foreach a $args {set msg "$msg:[nialEncodeString $a]"}
+    sendNial $msg
+}
+
+
 proc nialEvent args {
     set msg "e"
     foreach a $args {set msg "$msg:[nialEncodeString $a]"}
