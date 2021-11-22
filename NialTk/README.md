@@ -1,7 +1,7 @@
 # NialTk
 
 This directory contains a work in progess implementation of an interface between Nial and TCl/Tk to allow for creation of GUIs for Nial programs. Nial starts a Tcl
-shell and writes to the Tcl process over it's standard input. Communication back from Tcl to Nial is over a socket connection using a simple character oriented protocol contained in *tclconnector.tcl* which is loaded at the beginning of the interaction.
+shell and writes to the Tcl process over it's standard input. Communication back from Tcl to Nial is over a socket connection using a simple character oriented protocol contained in *nialconnector.tcl* which is loaded at the beginning of the interaction.
 
 The Nial code is a single file *ntk.ndf* which creates the Tcl/Tk process, sends it basic commands to build or instantiate the interface, and then waits for responses.
 
