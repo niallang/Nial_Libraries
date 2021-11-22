@@ -212,6 +212,8 @@ _tclSendMessage is op Data {
 
 "_tclLooping defOnceAs l;
 
+"_tclResponses defOnceAs [];
+
 
 _tclDecodeMessage is op msg {
   res := [];
@@ -240,7 +242,8 @@ _tclDecodeMessage is op msg {
 
 
 _tclHandleCommand is op Cmd {
-  write ('*** Unhandled command: ' link _tclJoin Cmd);
+  fun := phrase first Cmd;
+  fun apply rest Cmd;
 }
 
 _tclHandleInformation is op Cmd {
@@ -248,7 +251,8 @@ _tclHandleInformation is op Cmd {
 }
 
 _tclHandleResponse is op Cmd {
-  write ('*** Tcl Response: ' link _tclJoin  Cmd);
+  nonlocal _tclResponses;
+  _tclResponses := _TclResponses append [Cmd];
 }
 
 _tclHandleEvent is op Cmd {
