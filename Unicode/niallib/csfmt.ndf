@@ -1,0 +1,81 @@
+
+# -------------------------------------------------
+# Simple string interpolation/formating utilities
+# using C style string escapes and ruby style
+# string interpolation
+# -------------------------------------------------
+
+# Forward declarations
+
+csfmt_interpolate is external op;
+csfmt_subst       is external op;
+csfmt_unicode     is external op;
+
+_crlf := char 13 10;
+
+# Simple string interpolation, \{exp} is replaced
+# by the result of executing exp.
+
+csfmt_interpolate is op s {
+  s := 1 drop s;
+  ok pos := `} seek s;
+  if ok then
+    expn rst := [pos take, (pos+1) drop] s;
+    pic := rows picture eval parse scan expn;
+    if 1 = tally pic then
+      (first pic) link rst
+    else
+      '' left_reduce (op x y (link x _crlf y))  (pic append rst)
+    end
+  else
+    ?interpolation_error
+  end  
+}
+
+
+# Substitute chars on a string using backslash escapes
+
+csfmt_subst is op ch s {
+  ch hitch (1 drop s)
+}
+
+  
+# Handle C style unicode sequences in a string
+
+csfmt_unicode is op n s {
+  link [utf8 (n take), n drop] (1 drop s)
+}
+
+# List of \ chars and their associated functions
+
+csfmt_basics := [`{, `u, `U, `n, `r, `t];
+csfmt_trans := [!csfmt_interpolate,
+                      !(4 csfmt_unicode),
+                      !(8 csfmt_unicode),
+                      !((char 10) csfmt_subst),
+                      !((char 13) csfmt_subst),
+                      !((char 8) csfmt_subst),
+                      !pass];
+
+
+csfmt_element is op elt {
+  if (1 >= tally elt) or (`\ ~= first elt) then
+    elt
+  else
+    idx := (((second elt) find csfmt_basics) pick csfmt_trans) apply (1 drop elt)
+  end
+}
+  
+
+
+# Basic string char substitution and string interpolation
+# top level. This splits the string into a series of substrings
+# which begin with \ excepting, possibly, the first string.
+ 
+csfmt is op s {
+  cmask := o left_accumulate (and [not first, second]) (`\ match s);
+  sv := (cmask cutall s);
+  sv := (each (0 < tally) sv) sublist sv;
+  link each csfmt_element sv
+}
+

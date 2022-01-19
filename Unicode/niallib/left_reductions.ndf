@@ -1,0 +1,11 @@
+# Left to right versions of reduce and accumulate
+
+left_reduce is transformer fn op x y {
+  for i with y do x := x fn i endfor
+}
+
+
+left_accumulate is transformer fn op x y {
+  each (op z {nonlocal x; x := x fn z}) y
+}
+

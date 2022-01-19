@@ -1,0 +1,47 @@
+# =================== Common Prelude =================
+#
+# 1. Adds a function (withLib) that only loads a library
+#    if it is not already loaded. This avoids problems with
+#    data structures or caches in the library
+#
+# 2. Adds the current directory and the subdirectory niallib
+#    to the library path for searching
+#
+
+
+if empty Libpath then
+  Libpath := [DefLibpath];
+endif;
+
+
+% Extend the default library path;
+Libpath := ['.', makefilepath '.' 'niallib'] link Libpath;
+
+% Cache library names to avoid loading twice;
+Loaded_Library_Items := [];
+
+% Load a library only if it is not already loaded;
+withlib is op Args {
+  nonlocal Loaded_Library_Items;
+  IF tally Args = 2 and not isstring Args THEN
+    Filename Mode := Args;
+  ELSE
+    Filename := Args;
+    Mode := False;
+  ENDIF;
+  % Check if this library file is already loaded;
+  PFileName := phrase Filename;
+  exp idx := PFileName seek Loaded_Library_Items;
+  res := ??noexpr;
+  if not exp then
+    %write 'Loading library';
+    res := library Filename mode; 
+    if res = ??noexpr then
+      Loaded_Library_Items := Loaded_Library_Items append PFilename;
+    endif;
+  else
+    %write 'Library already loaded';
+  endif;
+  res
+  }
+

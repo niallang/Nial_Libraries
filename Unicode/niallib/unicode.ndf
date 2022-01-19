@@ -1,0 +1,82 @@
+# ----------------------- Unicode/UTF-8 operations ------------
+
+withlib "radix;
+withlib "left_reductions;
+
+
+# Convert single unicode value to utf8 format
+
+utf8_1 is op c {
+  res := '';
+  if c < 128 then
+    % ascii char;
+    res := char c;
+  elseif c < 2048 then
+    % 2 byte encoding;
+    res := char (((c quotient 64 1) bit_and 31 63) bit_or 192 128);
+  elseif c < 65536 then
+    % 3 byte encodi4ng;
+    c1 := c quotient 4096 64 1;
+    c2 := c1 bit_and 15 63 63;
+    c3 := c2 bit_or 224 128 128;
+    res := char c3;
+  else
+    % 4 byte encoding;
+    c1 := c quotient 262144 4096 64 1;
+    c2 := c1 bit_and 7 63 63 63;
+    c3 := c2 bit_or  240 128 128 128;
+    res := char c3;
+  endif;
+  res
+  }
+
+
+# Convert unicode (atomic or array) to utf-8
+
+utf8 is op v {
+  if atomic v then utf8_1 v else link each utf8_1 v endif
+}
+
+
+# Convert a single utf8 sequence into a unicode integer
+# Trailing bytes are to be included in the output. 
+
+utf8_rep1 is op bseq {
+  if 240 <= first bseq then
+    % 4 byte sequence;
+    us rst := [4 take, 4 drop] bseq;
+    ucode := (+ ((us bit_xor 240 128 128 128) * 262144 4096 64 1));
+    ucode hitch rst
+  elseif 224 <= first bseq then
+    % 3 byte unicode sequence;
+    us rst := [3 take, 3 drop] bseq;
+    ucode := (+ ((us bit_xor 224 128 128) * 4096 64 1));
+    ucode hitch rst
+  elseif 192 < first bseq then
+    % 2 byte sequence;
+    us rst := [2 take, 2 drop] bseq;
+    ucode := (+ ((us bit_xor 192 128) * 64 1));
+    ucode hitch rst
+  else
+    % ascii char;
+    bseq
+  end
+}
+
+  
+# Convert utf8 to unicode
+# This uses the fact that the first byte  of a UTF-8 sequence is
+# greater than 192
+
+utf8rep is op s {
+  bs := byterep s;
+  bsv := (191 < bs) cutall bs;     % Split into sequences;
+  link each  utf8_rep1 bsv 
+}
+
+
+# hex string to unicode and then to utf8
+
+hexstr_to_utf8 is op c (utf8 _hex c);
+
+
