@@ -5,64 +5,82 @@
 # string interpolation
 # -------------------------------------------------
 
+withlib "left_reductions;
+withlib "unicode;
+withlib "radix;
+
 # Forward declarations
 
-csfmt_interpolate is external op;
+csfmt_insert      is external op;
 csfmt_subst       is external op;
 csfmt_unicode     is external op;
 
 _crlf := char 13 10;
 
-# Simple string interpolation, \{exp} is replaced
-# by the result of executing exp.
 
-csfmt_interpolate is op s {
+# Simple string insert, \i is replaced
+# by the i'th value of the input values vector
+
+csfmt_insert is op pos args {
+  s vals := args;
   s := 1 drop s;
-  ok pos := `} seek s;
-  if ok then
-    expn rst := [pos take, (pos+1) drop] s;
-    pic := rows picture eval parse scan expn;
+  if pos < tally vals then
+    expn := pos pick vals;
+    pic := rows picture expn;
     if 1 = tally pic then
-      (first pic) link rst
+      (first pic) link s
     else
-      '' left_reduce (op x y (link x _crlf y))  (pic append rst)
+      '' left_reduce (op x y (link x _crlf y))  (pic append s)
     end
   else
-    ?interpolation_error
+    ?index_error
   end  
 }
 
 
 # Substitute chars on a string using backslash escapes
 
-csfmt_subst is op ch s {
+csfmt_subst is op ch args {
+  s vals := args;
   ch hitch (1 drop s)
 }
 
   
 # Handle C style unicode sequences in a string
 
-csfmt_unicode is op n s {
-  link [utf8 (n take), n drop] (1 drop s)
+csfmt_unicode is op n args {
+  s vals := args;
+  write s;
+  link [utf8 _hex (n take), n drop] (1 drop s)
 }
 
 # List of \ chars and their associated functions
 
-csfmt_basics := [`{, `u, `U, `n, `r, `t];
-csfmt_trans := [!csfmt_interpolate,
-                      !(4 csfmt_unicode),
-                      !(8 csfmt_unicode),
-                      !((char 10) csfmt_subst),
-                      !((char 13) csfmt_subst),
-                      !((char 8) csfmt_subst),
-                      !pass];
+csfmt_basics := [`0,`1,`2,`3,`4,`5,`6,`7,`8,`9, `u, `U, `n, `r, `t];
+csfmt_trans := [!(0 csfmt_insert),
+                !(1 csfmt_insert),
+                !(2 csfmt_insert),
+                !(3 csfmt_insert),
+                !(4 csfmt_insert),
+                !(5 csfmt_insert),
+                !(6 csfmt_insert),
+                !(7 csfmt_insert),
+                !(8 csfmt_insert),
+                !(9 csfmt_insert),
+                !(4 csfmt_unicode),
+                !(8 csfmt_unicode),
+                !((char 10) csfmt_subst),
+                !((char 13) csfmt_subst),
+                !((char 8) csfmt_subst),
+                !pass];
 
 
-csfmt_element is op elt {
+csfmt_element is op elt vals {
   if (1 >= tally elt) or (`\ ~= first elt) then
     elt
   else
-    idx := (((second elt) find csfmt_basics) pick csfmt_trans) apply (1 drop elt)
+    fn := ((second elt) find csfmt_basics) pick csfmt_trans;
+    fn apply [(1 drop elt), vals]
   end
 }
   
@@ -72,10 +90,21 @@ csfmt_element is op elt {
 # top level. This splits the string into a series of substrings
 # which begin with \ excepting, possibly, the first string.
  
-csfmt is op s {
+csfmt is op args {
+  % Check input arguments for presence of values;
+  if (2 = tally args) and (not isstring args) then
+    s vals := args;
+  else
+    s := args;
+    vals := [];
+  endif;
+  % split the format string into slices and process;
   cmask := o left_accumulate (and [not first, second]) (`\ match s);
   sv := (cmask cutall s);
   sv := (each (0 < tally) sv) sublist sv;
-  link each csfmt_element sv
+  link (sv eachleft csfmt_element vals)
 }
+
+
+
 

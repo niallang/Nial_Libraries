@@ -1,0 +1,35 @@
+# Find the unique characters in a UTF-8 file 
+# and print out their counts in the file
+
+loaddefs "withlib;
+
+withlib "unicode;
+withlib "csfmt;
+
+printf is (writefile [1 first, csfmt, o first]);
+
+% Count and report the occurences of unicode chars in a file;
+filestats is op fn {
+  f := open fn "r;
+  % Read all the text in one operation;
+  txt := readfile f (filelength fn);
+  % convert to unicode;
+  codes := utf8rep txt;
+  % Sort and cull to get the unique codes;
+  scodes := cull sortup codes;
+  printf 'Unique chars: \0\r\n' [utf8 scodes];
+  % Write out the details;
+  each (op c (printf  'Char: \0, count: \1\r\n' [utf8 c, + (c match codes)])) scodes;
+  close f;
+};
+
+filestats 'samples/rune_poem.txt';
+
+bye;
+
+
+
+
+
+
+

@@ -5,13 +5,14 @@ loaddefs "withlib;
 withlib "unicode;
 withlib "csfmt;
 
+printf is (writefile [1 first, csfmt, o first]);
 
 base := _hex '1200';
 incr := _hex '100';
 
 for i with tell 32 do
   ucs := link each utf8 (base + tell 32);
-  writefile 1 (csfmt 'base: \{_hexstr base} -> \{ucs}\r\n');
+  printf 'base: \0 -> \1\r\n' [_hexstr base, ucs];
   base := base + incr;
 end;
 
