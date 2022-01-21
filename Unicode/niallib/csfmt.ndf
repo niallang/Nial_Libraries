@@ -1,8 +1,8 @@
 
 # -------------------------------------------------
-# Simple string interpolation/formating utilities
-# using C style string escapes and ruby style
-# string interpolation
+# Simple string formating utilities
+# using C style string escapes and string insertion
+# from a supplied array using escapes /0../9
 # -------------------------------------------------
 
 withlib "left_reductions;
