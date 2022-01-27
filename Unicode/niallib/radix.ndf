@@ -28,8 +28,7 @@ decode is op base num {
   if and[tally base ~= tally num,tally base ~= 1,tally num ~= 1] then
     ??length
   else
-    maxLength := tally base max tally num;
-    if tally base ~= maxLength then base := maxLength reshape base end;
+    if tally base < tally num then base := tally num reshape base end;
     base := reverse accumulate * reverse (1 drop base link 1);
     + (num * base)
   end
