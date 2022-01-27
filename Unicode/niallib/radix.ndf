@@ -30,9 +30,8 @@ decode is op base num {
   else
     maxLength := tally base max tally num;
     if tally base ~= maxLength then base := maxLength reshape base end;
-    if tally num  ~= maxLength then num  := maxLength reshape num  end;
     base := reverse accumulate * reverse (1 drop base link 1);
-	+ (num * base)
+    + (num * base)
   end
 }
 
