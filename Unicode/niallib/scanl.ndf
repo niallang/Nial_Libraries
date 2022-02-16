@@ -1,0 +1,6 @@
+scanl is tr fn op start A { % requires identity element. ;
+  each (op x {
+    nonlocal start;
+    start := start fn x
+  }) A
+}
