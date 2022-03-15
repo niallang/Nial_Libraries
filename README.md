@@ -10,4 +10,6 @@ This repository contains:
 ## How To Use
 The instructions for each library are given in their folders.
 
-The common method of importing a library is using `loaddefs 'path/to/file.ndf'` for all required library files.
+The common method of importing a library is: `loaddefs 'path/to/file.ndf'`. If the path is relative, then `./path/to/file` must be specified.
+
+`loaddefs` must be done for all required library files.

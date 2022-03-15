@@ -7,7 +7,8 @@
 % Libraries ;
 
 
-loaddefs 'Unicode/withlib.ndf'; 
+loaddefs './Unicode/withlib.ndf'; 
+
 withlib "unicode; 
 withlib "csfmt; 
 
@@ -54,7 +55,7 @@ json_tostring is op str {
         `u: 
           hexstr := 4 take (i+1 drop str);
           If hexstr allin '0123456789abcdefABCDEF' Then
-            % char _hex hexstr;
+            char _hex hexstr;
             i := i + 2;
             '∪'
           Else
