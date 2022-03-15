@@ -7,10 +7,7 @@
 % Libraries ;
 
 
-loaddefs './Unicode/withlib.ndf'; 
-
-withlib "unicode; 
-withlib "csfmt; 
+loaddefs './Unicode/unicode.ndf';
 
 json_tokenize is op str {
   quotes := not (-1 drop (o link (`\ match str))) and (`" match str);

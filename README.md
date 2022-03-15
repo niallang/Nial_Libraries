@@ -8,7 +8,7 @@ This repository contains:
 - `Unicode/niallib/`: Unicode library and helper functions
 
 ## How To Use
-The instructions for each library are given in their folders.
+The instructions for each library (and their dependencies, if any) are given in their folders.
 
 The common method of importing a library is: `loaddefs 'path/to/file.ndf'`. If the path is relative, then `./path/to/file` must be specified.
 
