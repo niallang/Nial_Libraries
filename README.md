@@ -5,7 +5,7 @@ The main repository for official Nial Libraries, some of which are maintained by
 This repository contains:
 - `NialTk`: Tcl/Tk bindings
 - `Sound`: Audio manipulation library
-- `Unicode/niallib/`: Unicode library and helper functions
+- `Unicode`: Unicode library
 
 ## How To Use
 The instructions for each library (and their dependencies, if any) are given in their folders.
