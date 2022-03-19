@@ -3,6 +3,5 @@
 Written by gibbonsja.
 
 # Usage
-`loaddefs './path/to/uni.ndf'` will import all necessary library files.
-
+`library "unicode` should work for importing this library, so long as this directory is included in the special system variable `libpath`.
 `niallib/` has more libraries that are used as helpers for the library. These can be used separately as well.
